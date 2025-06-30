@@ -43,15 +43,16 @@ public class BukkitUtils extends JavaPlugin {
         pl = this;
         instance = this;
 
+
         createDefaultConfig("config.yml");
         createDefaultConfig("data.yml");
 
         setupConfigDefaults();
 
+        configManager = new ConfigManager(this);
+
         updater = new GitHubUpdater(this, "LowestDev", "BukkitUtils");
         updater.checkForUpdates();
-
-        configManager = new ConfigManager(this);
 
 
         boolean discordEnabled = getConfig().getBoolean("discord.enabled", false);
