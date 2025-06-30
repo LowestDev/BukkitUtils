@@ -76,15 +76,6 @@ public class BukkitUtils extends JavaPlugin {
         addSaddleRecipe();
         getLogger().info("Saddle recipe has been added.");
 
-        getLogger().info("Adding gamerules...");
-        for (World w : Bukkit.getWorlds()){
-
-            getServer().getWorld(w.getName()).setGameRule(GameRule.KEEP_INVENTORY, true);
-            getServer().getWorld(w.getName()).setGameRule(GameRule.LOG_ADMIN_COMMANDS, false);
-            getServer().getWorld(w.getName()).setGameRule(GameRule.COMMAND_BLOCK_OUTPUT, false);
-            getServer().getWorld(w.getName()).setGameRule(GameRule.SEND_COMMAND_FEEDBACK, true);
-            getLogger().info("Added gamerules for world " + w.getName());
-        }
         getLogger().info("Registering events for the player listeners...");
         getServer().getPluginManager().registerEvents(new PlayerListener(), this);
         getLogger().info("Successfully registered events for the player listeners.");
@@ -180,6 +171,10 @@ public class BukkitUtils extends JavaPlugin {
         }
         if (!config.isSet("discord.channel-id")) {
             config.set("discord.channel-id", "");
+            changed = true;
+        }
+        if (!config.isSet("discord.guild-id")) {
+            config.set("discord.guild-id", "");
             changed = true;
         }
         if (!config.isSet("permissions.use-permissions")) {
