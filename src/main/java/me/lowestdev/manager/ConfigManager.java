@@ -1,0 +1,66 @@
+package me.lowestdev.manager;
+
+import me.lowestdev.BukkitUtils;
+import org.bukkit.configuration.file.FileConfiguration;
+import org.bukkit.configuration.file.YamlConfiguration;
+
+import java.io.File;
+import java.io.IOException;
+
+public class ConfigManager {
+
+    private final BukkitUtils plugin;
+    private FileConfiguration data;
+    private File dataFile;
+
+    public ConfigManager(BukkitUtils plugin) {
+        this.plugin = plugin;
+        loadData();
+    }
+
+    private void loadData() {
+        dataFile = new File(plugin.getDataFolder(), "data.yml");
+        if (!dataFile.exists()) {
+            try {
+                dataFile.createNewFile();
+            } catch (IOException e) {
+                plugin.getLogger().severe("Could not create data.yml: " + e.getMessage());
+            }
+        }
+        data = YamlConfiguration.loadConfiguration(dataFile);
+    }
+
+    public void reload() {
+        plugin.reloadConfig();
+        loadData();
+    }
+
+    public String getBotToken() {
+        return plugin.getConfig().getString("bot-token");
+    }
+
+    public String getGuildId() {
+        return plugin.getConfig().getString("guild-id");
+    }
+
+    public String getChannelId() {
+        return plugin.getConfig().getString("channel-id");
+    }
+
+    public long getStatusMessageId() {
+        return data.getLong("status-message-id", -1);
+    }
+
+    public void setStatusMessageId(long id) {
+        data.set("status-message-id", id);
+        saveData();
+    }
+
+    private void saveData() {
+        try {
+            data.save(dataFile);
+        } catch (IOException e) {
+            plugin.getLogger().severe("Failed to save data.yml: " + e.getMessage());
+        }
+    }
+}
