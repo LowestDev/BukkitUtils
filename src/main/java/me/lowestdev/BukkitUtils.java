@@ -48,8 +48,8 @@ public class BukkitUtils extends JavaPlugin {
 
         setupConfigDefaults();
 
-        updater = new GitHubUpdater(this);
-        updater.checkForUpdate();
+        updater = new GitHubUpdater(this, "LowestDev", "BukkitUtils");
+        updater.checkForUpdates();
 
         configManager = new ConfigManager(this);
 
@@ -94,7 +94,7 @@ public class BukkitUtils extends JavaPlugin {
         if (discordManager != null) {
             discordManager.shutdown(false);
         }
-        if (updater != null) updater.applyUpdateOnDisable();
+        if (updater != null) updater.checkForUpdates();
         getLogger().info("BukkitUtils has been successfully disabled.");
     }
 

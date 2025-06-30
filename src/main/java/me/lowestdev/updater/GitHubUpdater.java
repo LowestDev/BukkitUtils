@@ -1,121 +1,107 @@
 package me.lowestdev.updater;
 
-import me.lowestdev.BukkitUtils;
-import org.json.JSONArray;
-import org.json.JSONObject;
+import org.bukkit.configuration.file.FileConfiguration;
+import org.bukkit.plugin.Plugin;
 
 import java.io.*;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
-import java.util.zip.GZIPInputStream;
+
+import org.json.JSONArray;
+import org.json.JSONObject;
+
+import me.lowestdev.BukkitUtils;
 
 public class GitHubUpdater {
-    private static final String REPO = "FelipeRS/BukkitUtils"; // Hardcoded repo
-    private static final String TOKEN = "ghp_XXXXXXXXXXXXXXXXXXXXXXXXXXXX";
-    private final BukkitUtils plugin;
-    private final File updateFolder;
-    private File downloadedFile;
+    private final Plugin plugin;
+    private final String repoOwner;
+    private final String repoName;
 
-    public GitHubUpdater(BukkitUtils plugin) {
+    public GitHubUpdater(Plugin plugin, String repoOwner, String repoName) {
         this.plugin = plugin;
-        this.updateFolder = new File(plugin.getDataFolder().getParentFile(), "new-update");
-        if (!updateFolder.exists()) updateFolder.mkdirs();
+        this.repoOwner = repoOwner;
+        this.repoName = repoName;
     }
 
-    public void checkForUpdate() {
-        plugin.getLogger().info("Checking for plugin updates on GitHub...");
-        new Thread(() -> {
-            try {
-                JSONObject release = getLatestRelease();
-                if (release == null) {
-                    plugin.getLogger().warning("Failed to fetch latest release info.");
-                    return;
-                }
-                String latestVersion = release.getString("tag_name");
-                String currentVersion = plugin.getDescription().getVersion();
-
-                plugin.getLogger().info("Current version: " + currentVersion + ", Latest version: " + latestVersion);
-
-                if (isNewerVersion(latestVersion, currentVersion)) {
-                    plugin.getLogger().info("New version found: " + latestVersion);
-                    JSONArray assets = release.getJSONArray("assets");
-                    if (assets.length() == 0) {
-                        plugin.getLogger().warning("No downloadable assets in release.");
-                        return;
-                    }
-                    String downloadUrl = assets.getJSONObject(0).getString("browser_download_url");
-                    downloadUpdate(downloadUrl);
-                } else {
-                    plugin.getLogger().info("Plugin is up to date.");
-                }
-            } catch (Exception e) {
-                plugin.getLogger().warning("Update check failed: " + e.getMessage());
-            }
-        }).start();
-    }
-
-    private JSONObject getLatestRelease() throws IOException {
-        URL url = new URL("https://api.github.com/repos/" + REPO + "/releases/latest");
-        HttpURLConnection conn = (HttpURLConnection) url.openConnection();
-        conn.setRequestProperty("Accept-Encoding", "gzip");
-        conn.setRequestProperty("User-Agent", "BukkitUtils-Updater");
-
-        conn.setRequestProperty("Authorization", "token " + TOKEN);
-
-        InputStream is = conn.getInputStream();
-        if ("gzip".equalsIgnoreCase(conn.getContentEncoding())) {
-            is = new GZIPInputStream(is);
-        }
-
-        try (BufferedReader reader = new BufferedReader(new InputStreamReader(is))) {
-            StringBuilder sb = new StringBuilder();
-            String line;
-            while ((line = reader.readLine()) != null) sb.append(line);
-            return new JSONObject(sb.toString());
-        }
-    }
-
-    private boolean isNewerVersion(String latest, String current) {
-        String l = latest.startsWith("v") ? latest.substring(1) : latest;
-        String c = current.startsWith("v") ? current.substring(1) : current;
-        return l.compareTo(c) > 0;
-    }
-
-    private void downloadUpdate(String urlStr) {
-        plugin.getLogger().info("Downloading update: " + urlStr);
-        try (InputStream in = new URL(urlStr).openStream()) {
-            String fileName = urlStr.substring(urlStr.lastIndexOf('/') + 1);
-            downloadedFile = new File(updateFolder, fileName);
-            try (OutputStream out = new FileOutputStream(downloadedFile)) {
-                byte[] buffer = new byte[8192];
-                int bytesRead;
-                while ((bytesRead=in.read(buffer))!=-1) {
-                    out.write(buffer, 0, bytesRead);
-                }
-            }
-            plugin.getLogger().info("Update downloaded to " + downloadedFile.getAbsolutePath());
-        } catch (Exception e) {
-            plugin.getLogger().warning("Failed to download update: " + e.getMessage());
-        }
-    }
-
-    public void applyUpdateOnDisable() {
-        if (downloadedFile == null || !downloadedFile.exists()) return;
-
-        File pluginsDir = plugin.getDataFolder().getParentFile();
-        File currentJar = new File(pluginsDir, plugin.getDescription().getName() + ".jar");
-        File backupJar = new File(pluginsDir, plugin.getDescription().getName() + "-backup.jar");
+    public void checkForUpdates() {
+        BukkitUtils pluginInstance = (BukkitUtils) plugin;
+        FileConfiguration config = pluginInstance.getConfig();
 
         try {
-            if (currentJar.exists()) {
-                Files.move(currentJar.toPath(), backupJar.toPath(), StandardCopyOption.REPLACE_EXISTING);
+            String apiUrl = "https://api.github.com/repos/" + repoOwner + "/" + repoName + "/releases/latest";
+            HttpURLConnection connection = (HttpURLConnection) new URL(apiUrl).openConnection();
+            connection.setRequestProperty("Accept", "application/vnd.github.v3+json");
+
+            BufferedReader reader = new BufferedReader(new InputStreamReader(connection.getInputStream()));
+            StringBuilder response = new StringBuilder();
+            String line;
+
+            while ((line = reader.readLine()) != null) {
+                response.append(line);
             }
-            Files.move(downloadedFile.toPath(), currentJar.toPath(), StandardCopyOption.REPLACE_EXISTING);
-            plugin.getLogger().info("Plugin updated successfully.");
+            reader.close();
+
+            JSONObject release = new JSONObject(response.toString());
+            String latestVersion = release.getString("tag_name");
+            JSONArray assets = release.getJSONArray("assets");
+
+            String currentVersion = config.getString("installed-version", "0.0.0");
+            if (!currentVersion.equals(latestVersion)) {
+                plugin.getLogger().info("§eUpdate available: " + latestVersion + " (installed: " + currentVersion + ")");
+
+                for (int i = 0; i < assets.length(); i++) {
+                    JSONObject asset = assets.getJSONObject(i);
+                    String name = asset.getString("name");
+                    String downloadUrl = asset.getString("browser_download_url");
+
+                    if (name.endsWith(".jar")) {
+                        File pluginsFolder = plugin.getDataFolder().getParentFile();
+                        File updateFile = new File(pluginsFolder, name);
+
+                        plugin.getLogger().info("§eDownloading new version: " + name);
+                        downloadFile(downloadUrl, updateFile);
+
+                        File currentJar = getPluginJarFile(plugin);
+                        if (currentJar != null && !currentJar.getName().equals(updateFile.getName())) {
+                            File replacedJar = new File(currentJar.getParent(), currentJar.getName());
+                            if (replacedJar.exists()) {
+                                replacedJar.delete();
+                            }
+                            updateFile.renameTo(replacedJar);
+                            plugin.getLogger().info("§ePlugin file replaced successfully. Restart server to apply the update.");
+                        }
+
+                        config.set("installed-version", latestVersion);
+                        pluginInstance.saveConfig();
+                        break;
+                    }
+                }
+
+            } else {
+                plugin.getLogger().info("§aYou are using the latest version: " + latestVersion);
+            }
+
         } catch (Exception e) {
-            plugin.getLogger().warning("Failed to apply update: " + e.getMessage());
+            plugin.getLogger().warning("Failed to check for updates: " + e.getMessage());
+        }
+    }
+
+    private void downloadFile(String urlStr, File destination) throws IOException {
+        HttpURLConnection conn = (HttpURLConnection) new URL(urlStr).openConnection();
+        conn.setRequestProperty("Accept", "application/octet-stream");
+        try (InputStream in = conn.getInputStream()) {
+            Files.copy(in, destination.toPath(), StandardCopyOption.REPLACE_EXISTING);
+        }
+    }
+
+    private File getPluginJarFile(Plugin plugin) {
+        try {
+            return new File(plugin.getClass().getProtectionDomain().getCodeSource().getLocation().toURI());
+        } catch (Exception e) {
+            plugin.getLogger().warning("Could not determine plugin JAR location: " + e.getMessage());
+            return null;
         }
     }
 }
