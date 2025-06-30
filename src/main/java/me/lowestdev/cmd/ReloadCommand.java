@@ -1,7 +1,6 @@
 package me.lowestdev.cmd;
 
 import me.lowestdev.BukkitUtils;
-import org.bukkit.ChatColor;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
 
@@ -10,26 +9,24 @@ public class ReloadCommand extends Command {
     private final BukkitUtils plugin;
 
     public ReloadCommand(BukkitUtils plugin) {
-        super("discord");
+        super("bureload"); // command name
         this.plugin = plugin;
-        setDescription("Reload the DiscordStatus plugin");
-        setPermission("discordstatus.reload");
-        setUsage("/discord reload");
+
+        // Optional: add aliases and description
+        this.setDescription("Reloads the BukkitUtils plugin");
+        this.setAliases(java.util.Arrays.asList("butilsreload", "butreload"));
+        this.setPermission("bukkitutils.reload");
     }
 
     @Override
     public boolean execute(CommandSender sender, String label, String[] args) {
-        if (!sender.hasPermission("discordstatus.reload")) {
-            sender.sendMessage(ChatColor.RED + "You don't have permission.");
+        if (!sender.hasPermission(this.getPermission())) {
+            sender.sendMessage("§cYou don't have permission to use this command.");
             return true;
         }
 
-        if (args.length > 0 && args[0].equalsIgnoreCase("reload")) {
-            plugin.reloadPlugin();
-            sender.sendMessage(ChatColor.GREEN + "DiscordStatus plugin reloaded.");
-        } else {
-            sender.sendMessage(ChatColor.YELLOW + "Usage: /discordstatus reload");
-        }
+        plugin.reloadPlugin();
+        sender.sendMessage("§aBukkitUtils configuration reloaded successfully!");
         return true;
     }
 }
