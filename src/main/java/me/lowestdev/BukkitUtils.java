@@ -1,13 +1,14 @@
 package me.lowestdev;
 
-import me.lowestdev.cmd.ReloadCommand;
 import me.lowestdev.listener.PlayerListener;
 import me.lowestdev.manager.ConfigManager;
 import me.lowestdev.manager.DiscordManager;
 import me.lowestdev.manager.PermissionManager;
 import me.lowestdev.manager.StorageManager;
 import me.lowestdev.updater.GitHubUpdater;
-import org.bukkit.*;
+import org.bukkit.Bukkit;
+import org.bukkit.Material;
+import org.bukkit.NamespacedKey;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandMap;
 import org.bukkit.configuration.file.FileConfiguration;
@@ -21,7 +22,6 @@ import org.reflections.scanners.Scanners;
 import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.Field;
-import java.security.Permission;
 import java.util.Set;
 
 public class BukkitUtils extends JavaPlugin {
@@ -48,6 +48,7 @@ public class BukkitUtils extends JavaPlugin {
         createDefaultConfig("data.yml");
 
         setupConfigDefaults();
+        saveConfig();
 
         configManager = new ConfigManager(this);
 
@@ -56,10 +57,17 @@ public class BukkitUtils extends JavaPlugin {
 
 
         boolean discordEnabled = getConfig().getBoolean("discord.enabled", false);
+        String token = getConfig().getString("discord.token", null);
+        String channelId = getConfig().getString("discord.channel-id", null);
+        String guildId = getConfig().getString("discord.guild-id", null);
+
         if (discordEnabled) {
-            // Initialize Discord bot and start JDA connection
-            discordManager = new DiscordManager(this, configManager);
-            discordManager.start();
+            if (token == null || token.isEmpty()) {
+                getLogger().severe("Discord is enabled in config but no token was provided!");
+            } else {
+                discordManager = new DiscordManager(this, token, channelId, guildId);
+                discordManager.start();
+            }
         } else {
             getLogger().info("Discord integration disabled in config.");
         }
@@ -164,22 +172,11 @@ public class BukkitUtils extends JavaPlugin {
         FileConfiguration config = getConfig();
         boolean changed = false;
 
-        if (!config.isSet("discord.enabled")) {
-            config.set("discord.enabled", true);
-            changed = true;
-        }
-        if (!config.isSet("discord.token")) {
-            config.set("discord.token", "");
-            changed = true;
-        }
-        if (!config.isSet("discord.channel-id")) {
-            config.set("discord.channel-id", "");
-            changed = true;
-        }
-        if (!config.isSet("discord.guild-id")) {
-            config.set("discord.guild-id", "");
-            changed = true;
-        }
+        if (!config.isSet("discord.enabled"))       { config.set("discord.enabled", true); changed = true; }
+        if (!config.isSet("discord.token"))         { config.set("discord.token", ""); changed = true; }
+        if (!config.isSet("discord.channel-id"))    { config.set("discord.channel-id", ""); changed = true; }
+        if (!config.isSet("discord.guild-id"))      { config.set("discord.guild-id", ""); changed = true; }
+
         if (!config.isSet("permissions.use-permissions")) {
             config.set("permissions.use-permissions", true);
             changed = true;
@@ -223,7 +220,6 @@ public class BukkitUtils extends JavaPlugin {
         reloadConfig();
         configManager.reload();
         discordManager.shutdown(false);
-        discordManager = new DiscordManager(this, configManager);
         discordManager.start();
     }
 }

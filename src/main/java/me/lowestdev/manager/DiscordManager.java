@@ -11,6 +11,7 @@ import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
 import net.dv8tion.jda.api.requests.GatewayIntent;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
+import org.bukkit.plugin.Plugin;
 
 import java.awt.*;
 import java.time.Instant;
@@ -18,15 +19,21 @@ import java.util.stream.Collectors;
 
 public class DiscordManager {
 
-    private final BukkitUtils plugin;
-    private final ConfigManager config;
+    private BukkitUtils plugin;
+    private ConfigManager config;
     private JDA jda;
     private TextChannel channel;
     private Message statusMessage;
 
-    public DiscordManager(BukkitUtils plugin, ConfigManager config) {
-        this.plugin = plugin;
-        this.config = config;
+    public DiscordManager(Plugin plugin, String token, String channelId, String guildId) {
+        if (token == null || token.isBlank()) {
+            plugin.getLogger().severe("Cannot start Discord: token is missing.");
+            return;
+        }
+        if (channelId == null || guildId == null) {
+            plugin.getLogger().severe("DiscordManager: channel-id or guild-id missing in config.");
+            return;
+        }
     }
 
     public void start() {
