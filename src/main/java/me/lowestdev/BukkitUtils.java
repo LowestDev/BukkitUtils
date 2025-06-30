@@ -72,6 +72,8 @@ public class BukkitUtils extends JavaPlugin {
             getLogger().info("Permissions system disabled in config.");
         }
 
+        registerCommands();
+
         getLogger().info("Adding saddle recipe...");
         addSaddleRecipe();
         getLogger().info("Saddle recipe has been added.");
