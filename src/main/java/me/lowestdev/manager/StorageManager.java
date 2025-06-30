@@ -1,9 +1,11 @@
+// StorageManager.java
 package me.lowestdev.manager;
 
 import me.lowestdev.BukkitUtils;
 import me.lowestdev.models.Group;
 import me.lowestdev.models.PermissionAssignment;
 
+import java.io.File;
 import java.sql.*;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -32,7 +34,18 @@ public class StorageManager {
                 String pass = plugin.getConfig().getString("storage.mysql.password");
                 connection = DriverManager.getConnection("jdbc:mysql://" + host + ":" + port + "/" + db, user, pass);
             } else {
-                connection = DriverManager.getConnection("jdbc:sqlite:" + plugin.getDataFolder() + "/permissions.db");
+                File dbFile = new File(plugin.getDataFolder(), "permissions.db");
+                if (!plugin.getDataFolder().exists()) {
+                    plugin.getDataFolder().mkdirs();
+                }
+                if (!dbFile.exists()) {
+                    try {
+                        dbFile.createNewFile();
+                    } catch (Exception e) {
+                        plugin.getLogger().warning("Failed to create SQLite database file: " + e.getMessage());
+                    }
+                }
+                connection = DriverManager.getConnection("jdbc:sqlite:" + dbFile.getAbsolutePath());
             }
         } catch (SQLException e) {
             plugin.getLogger().severe("Database connection failed: " + e.getMessage());

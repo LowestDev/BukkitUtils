@@ -181,6 +181,10 @@ public class BukkitUtils extends JavaPlugin {
             config.set("permissions.use-permissions", true);
             changed = true;
         }
+        if (!config.isSet("storage.type")) {
+            config.set("storage.type", "sqlite");
+            changed = true;
+        }
         if (!config.isSet("permissions.mysql.enabled")) {
             config.set("permissions.mysql.enabled", false);
             changed = true;
