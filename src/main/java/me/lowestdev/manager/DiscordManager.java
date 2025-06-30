@@ -11,21 +11,30 @@ import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
 import net.dv8tion.jda.api.requests.GatewayIntent;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
-import org.bukkit.plugin.Plugin;
 
+import javax.security.auth.login.LoginException;
 import java.awt.*;
 import java.time.Instant;
 import java.util.stream.Collectors;
 
 public class DiscordManager {
 
-    private BukkitUtils plugin;
-    private ConfigManager config;
+    private final BukkitUtils plugin;
+    private final ConfigManager config;
     private JDA jda;
     private TextChannel channel;
     private Message statusMessage;
 
-    public DiscordManager(Plugin plugin, String token, String channelId, String guildId) {
+    public DiscordManager(BukkitUtils plugin, ConfigManager config) {
+        this.plugin = plugin;
+        this.config = config;
+    }
+
+    public void start() {
+        String token = config.getBotToken();
+        String channelId = config.getChannelId();
+        String guildId = config.getGuildId();
+
         if (token == null || token.isBlank()) {
             plugin.getLogger().severe("Cannot start Discord: token is missing.");
             return;
@@ -34,22 +43,20 @@ public class DiscordManager {
             plugin.getLogger().severe("DiscordManager: channel-id or guild-id missing in config.");
             return;
         }
-    }
 
-    public void start() {
         try {
-            jda = JDABuilder.createDefault(config.getBotToken())
+            jda = JDABuilder.createDefault(token)
                     .enableIntents(GatewayIntent.GUILD_MESSAGES)
                     .build()
                     .awaitReady();
 
-            Guild guild = jda.getGuildById(config.getGuildId());
+            Guild guild = jda.getGuildById(guildId);
             if (guild == null) {
                 plugin.getLogger().severe("Guild not found!");
                 return;
             }
 
-            channel = guild.getTextChannelById(config.getChannelId());
+            channel = guild.getTextChannelById(channelId);
             if (channel == null) {
                 plugin.getLogger().severe("Channel not found!");
                 return;
@@ -71,11 +78,12 @@ public class DiscordManager {
             Bukkit.getScheduler().runTaskTimerAsynchronously(plugin, this::updateStatus, 0L, 20L * 60);
 
         } catch (Exception e) {
-            plugin.getLogger().severe("Failed to initialize Discord: " + e.getMessage());
+            plugin.getLogger().severe("Failed to login to Discord: " + e.getMessage());
         }
     }
 
     private void sendInitialMessage() {
+        if (channel == null) return;
         channel.sendMessageEmbeds(generateEmbed(true)).queue(msg -> {
             statusMessage = msg;
             config.setStatusMessageId(msg.getIdLong());
@@ -102,16 +110,29 @@ public class DiscordManager {
         if (players.isEmpty()) players = "Sem jogadores online...";
 
         eb.addField("Lista de jogadores: ", players, false);
-
         eb.setTimestamp(Instant.now());
         return eb.build();
     }
 
     public void shutdown(boolean offlineNotice) {
         if (jda == null || jda.getStatus() == JDA.Status.SHUTDOWN) return;
+
         if (offlineNotice && statusMessage != null) {
             statusMessage.editMessageEmbeds(generateEmbed(false)).queue();
         }
+
         jda.shutdown();
+    }
+
+    public JDA getJda() {
+        return jda;
+    }
+
+    public TextChannel getChannel() {
+        return channel;
+    }
+
+    public Message getStatusMessage() {
+        return statusMessage;
     }
 }

@@ -65,7 +65,7 @@ public class BukkitUtils extends JavaPlugin {
             if (token == null || token.isEmpty()) {
                 getLogger().severe("Discord is enabled in config but no token was provided!");
             } else {
-                discordManager = new DiscordManager(this, token, channelId, guildId);
+                discordManager = new DiscordManager(this, configManager);
                 discordManager.start();
             }
         } else {
