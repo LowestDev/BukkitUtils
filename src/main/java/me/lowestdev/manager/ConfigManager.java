@@ -36,15 +36,15 @@ public class ConfigManager {
     }
 
     public String getBotToken() {
-        return plugin.getConfig().getString("bot-token");
+        return plugin.getConfig().getString("discord.token");
     }
 
     public String getGuildId() {
-        return plugin.getConfig().getString("guild-id");
+        return plugin.getConfig().getString("discord.guild-id");
     }
 
     public String getChannelId() {
-        return plugin.getConfig().getString("channel-id");
+        return plugin.getConfig().getString("discord.channel-id");
     }
 
     public long getStatusMessageId() {
