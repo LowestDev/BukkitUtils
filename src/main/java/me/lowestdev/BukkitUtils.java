@@ -79,6 +79,8 @@ public class BukkitUtils extends JavaPlugin {
             getLogger().info("Discord integration disabled in config.");
         }
 
+        updater = new GitHubUpdater(getInstance(), "LowestDev", "BukkitUtils");
+
         addSaddleRecipe();
 
         getLogger().info("Registering events for the player listeners...");
