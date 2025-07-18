@@ -1,4 +1,4 @@
-package me.lowestdev.cmd.maintenance;
+package me.lowestdev.cmd;
 
 import me.lowestdev.BukkitUtils;
 import me.lowestdev.manager.DeliveryManager;
