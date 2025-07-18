@@ -98,30 +98,22 @@ public class CorreioCommand extends Command {
 
     private ItemStack getItemStackFromKey(String key) throws Exception {
         Class<?> minecraftKeyClass = Class.forName("net.minecraft.resources.MinecraftKey");
-        Constructor<?> minecraftKeyConstructor = minecraftKeyClass.getConstructor(String.class);
-        Object minecraftKey = minecraftKeyConstructor.newInstance(key);
+        Object minecraftKey = minecraftKeyClass.getConstructor(String.class).newInstance(key);
 
-        Class<?> minecraftServerClass = Class.forName("net.minecraft.server.MinecraftServer");
-        Method getServerMethod = minecraftServerClass.getMethod("getServer");
-        Object minecraftServer = getServerMethod.invoke(null);
+        Class<?> builtInRegistriesClass = Class.forName("net.minecraft.core.registries.BuiltInRegistries");
+        Object itemRegistry = builtInRegistriesClass.getField("ITEM").get(null);
 
-        Method registryAccessMethod = minecraftServerClass.getMethod("aU");
-        Object registryAccess = registryAccessMethod.invoke(minecraftServer);
-
-        Method registryMethod = registryAccess.getClass().getMethod("a", Class.class);
-        Object itemRegistry = registryMethod.invoke(registryAccess, Class.forName("net.minecraft.world.item.Item"));
-
-        Method getMethod = itemRegistry.getClass().getMethod("a", minecraftKeyClass);
+        Method getMethod = itemRegistry.getClass().getMethod("get", Object.class);
         Object nmsItem = getMethod.invoke(itemRegistry, minecraftKey);
 
         if (nmsItem == null) return null;
 
-        Class<?> nmsItemClass = Class.forName("net.minecraft.world.item.Item");
-        Class<?> nmsItemStackClass = Class.forName("net.minecraft.world.item.ItemStack");
-        Object nmsItemStack = nmsItemStackClass.getConstructor(nmsItemClass).newInstance(nmsItem);
+        Class<?> itemStackClass = Class.forName("net.minecraft.world.item.ItemStack");
+        Object nmsItemStack = itemStackClass.getConstructor(nmsItem.getClass()).newInstance(nmsItem);
 
         Class<?> craftItemStackClass = Class.forName("org.bukkit.craftbukkit.v1_20_R1.inventory.CraftItemStack");
-        Method asBukkitCopy = craftItemStackClass.getMethod("asBukkitCopy", nmsItemStackClass);
+        Method asBukkitCopy = craftItemStackClass.getMethod("asBukkitCopy", itemStackClass);
         return (ItemStack) asBukkitCopy.invoke(null, nmsItemStack);
     }
+
 }
