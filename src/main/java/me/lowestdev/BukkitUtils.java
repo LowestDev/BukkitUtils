@@ -151,7 +151,7 @@ public class BukkitUtils extends JavaPlugin {
 
         if (!config.isSet("map.enabled")) { config.set("map.enabled", false); changed = true; }
         if (!config.isSet("map.url")) { config.set("map.url", ""); changed = true; }
-        if (!config.isSet("discord.enabled")) { config.set("discord.enabled", true); changed = true; }
+        if (!config.isSet("discord.enabled")) { config.set("discord.enabled", false); changed = true; }
         if (!config.isSet("discord.token")) { config.set("discord.token", ""); changed = true; }
         if (!config.isSet("discord.channel-id")) { config.set("discord.channel-id", ""); changed = true; }
         if (!config.isSet("discord.guild-id")) { config.set("discord.guild-id", ""); changed = true; }

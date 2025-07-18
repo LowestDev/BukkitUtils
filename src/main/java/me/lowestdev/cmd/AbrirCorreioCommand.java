@@ -36,25 +36,20 @@ public class AbrirCorreioCommand extends Command {
             return true;
         }
 
-        // Fetch all delivery slots
         List<DeliverySlot> deliveries = deliveryManager.getDeliveries(playerName);
         if (deliveries.isEmpty()) {
             player.sendMessage(ChatColor.YELLOW + "Nenhuma entrega disponível no momento.");
             return true;
         }
 
-        // Merge all items from all delivery slots into one list
         List<ItemStack> allItems = new ArrayList<>();
         for (DeliverySlot slot : deliveries) {
             allItems.addAll(slot.items);
         }
 
-        // Create inventory and open it to player
         Inventory inv = Bukkit.createInventory(player, 54, ChatColor.GREEN + "Entrega para " + playerName);
         inv.setContents(allItems.toArray(new ItemStack[0]));
         player.openInventory(inv);
-
-        // Note: actual removal of items/deliveries must happen in a listener when player takes items
 
         return true;
     }
