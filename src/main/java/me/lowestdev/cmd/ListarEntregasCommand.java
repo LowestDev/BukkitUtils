@@ -1,5 +1,6 @@
 package me.lowestdev.cmd;
 
+import me.lowestdev.BukkitUtils;
 import me.lowestdev.manager.DeliveryManager;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
@@ -11,11 +12,10 @@ import java.util.Set;
 
 public class ListarEntregasCommand extends Command {
 
-    private final DeliveryManager deliveryManager;
+    private final DeliveryManager deliveryManager = BukkitUtils.getDeliveryManager();
 
     public ListarEntregasCommand(me.lowestdev.BukkitUtils plugin, DeliveryManager deliveryManager) {
         super("listareentregas");
-        this.deliveryManager = deliveryManager;
     }
 
     @Override

@@ -1,5 +1,6 @@
 package me.lowestdev.cmd;
 
+import me.lowestdev.BukkitUtils;
 import me.lowestdev.manager.DeliveryManager;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
@@ -18,13 +19,11 @@ import java.util.List;
 
 public class CorreioCommand extends Command {
 
-    private final JavaPlugin plugin;
-    private final DeliveryManager deliveryManager;
+    private final JavaPlugin plugin = BukkitUtils.getInstance();
+    private final DeliveryManager deliveryManager = BukkitUtils.getDeliveryManager();
 
-    public CorreioCommand(JavaPlugin plugin, DeliveryManager deliveryManager) {
+    public CorreioCommand() {
         super("correio");
-        this.plugin = plugin;
-        this.deliveryManager = deliveryManager;
     }
 
     @Override

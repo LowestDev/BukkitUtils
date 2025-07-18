@@ -1,5 +1,6 @@
 package me.lowestdev.cmd;
 
+import me.lowestdev.BukkitUtils;
 import me.lowestdev.manager.DeliveryManager;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
@@ -8,11 +9,10 @@ import org.bukkit.command.CommandSender;
 
 public class CancelarEntregaCommand extends Command {
 
-    private final DeliveryManager deliveryManager;
+    private final DeliveryManager deliveryManager = BukkitUtils.getDeliveryManager();
 
-    public CancelarEntregaCommand(DeliveryManager deliveryManager) {
+    public CancelarEntregaCommand() {
         super("cancelarentrega");
-        this.deliveryManager = deliveryManager;
     }
 
     @Override

@@ -7,6 +7,7 @@ import me.lowestdev.listener.PlayerListener;
 import me.lowestdev.manager.ConfigManager;
 import me.lowestdev.manager.DeliveryManager;
 import me.lowestdev.manager.DiscordManager;
+import me.lowestdev.models.ClassGetter;
 import me.lowestdev.updater.GitHubUpdater;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
@@ -17,6 +18,7 @@ import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.ShapedRecipe;
 import org.bukkit.plugin.Plugin;
+import org.bukkit.plugin.SimplePluginManager;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import java.io.File;
@@ -88,9 +90,7 @@ public class BukkitUtils extends JavaPlugin {
         getLogger().info("Successfully registered events for the player listeners.");
 
         getLogger().info("Registering commands...");
-        registerDynamicCommand(new QuebratudoCommand());
-        registerDynamicCommand(new LixoCommand());
-        registerDynamicCommand(new CancelarEntregaCommand(deliveryManager));
+        registerDynamicCommand();
         getLogger().info("Successfully registered commands.");
     }
 
@@ -159,17 +159,38 @@ public class BukkitUtils extends JavaPlugin {
         }
     }
 
-    private void registerDynamicCommand(Command command) {
+    public void registerDynamicCommand() {
         try {
-            Field commandMapField = Bukkit.getServer().getClass().getDeclaredField("commandMap");
-            commandMapField.setAccessible(true);
-            CommandMap commandMap = (CommandMap) commandMapField.get(Bukkit.getServer());
-            commandMap.register(getDescription().getName(), command);
+            // Get the CommandMap from the server's PluginManager via reflection
+            CommandMap commandMap = null;
+            if (getServer().getPluginManager() instanceof SimplePluginManager) {
+                Field commandMapField = SimplePluginManager.class.getDeclaredField("commandMap");
+                commandMapField.setAccessible(true);
+                commandMap = (CommandMap) commandMapField.get(getServer().getPluginManager());
+            }
+
+            if (commandMap == null) {
+                getLogger().warning("CommandMap is null, commands will not be registered!");
+                return;
+            }
+            for (Class<?> clazz : ClassGetter.getClassesForPackage(getInstance(), "me.lowestdev.cmd")) {
+                // Only process classes that extend Bukkit's Command
+                if (Command.class.isAssignableFrom(clazz)) {
+                    // Instantiate command using no-arg constructor
+                    Command cmd = (Command) clazz.getDeclaredConstructor().newInstance();
+
+                    // Register the command with your plugin's name as fallback prefix
+                    commandMap.register(getDescription().getName(), cmd);
+
+                    getLogger().info("Registered command: " + cmd.getName());
+                }
+            }
         } catch (Exception e) {
-            getLogger().severe("Failed to register command dynamically: " + e.getMessage());
+            getLogger().severe("Failed to register dynamic commands: " + e.getMessage());
             e.printStackTrace();
         }
     }
+
 
     public void reloadPlugin() {
         reloadConfig();
