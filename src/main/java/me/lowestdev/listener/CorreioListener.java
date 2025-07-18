@@ -23,6 +23,27 @@ public class CorreioListener implements Listener {
     private final DeliveryManager deliveryManager = BukkitUtils.getDeliveryManager();
 
     @EventHandler
+    public void onPlayerJoin(PlayerJoinEvent event){
+
+        if (BukkitUtils.discordManager != null) {
+            BukkitUtils.discordManager.updateStatus();
+        }
+
+        event.setJoinMessage("§8[§a+§8]§f " + event.getPlayer().getName());
+        if (PlayerListener.quebraTudo.contains(event.getPlayer())) {
+            PlayerListener.quebraTudo.remove(event.getPlayer());
+        }
+
+        if (deliveryManager.hasDelivery(event.getPlayer().getName())) {
+            event.getPlayer().sendMessage(ChatColor.YELLOW + "Você tem uma nova entrega!\n" + ChatColor.RED + ChatColor.UNDERLINE + "Lembre-se de liberar espaço no seu inventário para receber seus itens!\n");
+            TextComponent message = new TextComponent(ChatColor.GREEN + "[Clique aqui para abrir sua entrega]");
+            message.setClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/abrircorreio"));
+            event.getPlayer().spigot().sendMessage(message);
+        }
+
+    }
+
+    @EventHandler
     public void onClose(InventoryCloseEvent event) {
         if (!event.getView().getTitle().startsWith(ChatColor.GREEN + "Entrega para ")) {
             return;

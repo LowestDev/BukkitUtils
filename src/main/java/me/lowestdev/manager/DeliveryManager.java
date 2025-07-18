@@ -2,7 +2,6 @@ package me.lowestdev.manager;
 
 import me.lowestdev.BukkitUtils;
 import org.bukkit.Bukkit;
-import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.plugin.Plugin;
@@ -79,31 +78,12 @@ public class DeliveryManager {
     }
 
     public synchronized void addDelivery(String targetPlayerName, List<ItemStack> items, String senderName) {
-        try {
-            // Check if a delivery already exists
-            List<DeliverySlot> slots = getDeliveries(targetPlayerName);
-            boolean added = false;
-
-            for (DeliverySlot slot : slots) {
-                if (slot.senderName.equals(senderName)) {
-                    // Add to existing delivery slot
-                    slot.items.addAll(items);
-                    updateDelivery(slot.id, slot.items);
-                    added = true;
-                    break;
-                }
-            }
-
-            if (!added) {
-                // Create new delivery slot
-                try (PreparedStatement stmt = connection.prepareStatement(
-                        "INSERT INTO deliveries (player_name, sender_name, items) VALUES (?, ?, ?)")) {
-                    stmt.setString(1, targetPlayerName.toLowerCase(Locale.ROOT));
-                    stmt.setString(2, senderName);
-                    stmt.setString(3, serializeItems(items));
-                    stmt.executeUpdate();
-                }
-            }
+        try (PreparedStatement stmt = connection.prepareStatement(
+                "INSERT INTO deliveries (player_name, sender_name, items) VALUES (?, ?, ?)")) {
+            stmt.setString(1, targetPlayerName.toLowerCase(Locale.ROOT));
+            stmt.setString(2, senderName);
+            stmt.setString(3, serializeItems(items));
+            stmt.executeUpdate();
 
             plugin.getLogger().info("Entrega registrada para " + targetPlayerName + " por " + senderName);
 

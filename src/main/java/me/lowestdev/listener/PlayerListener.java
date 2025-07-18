@@ -23,28 +23,7 @@ import java.util.*;
 public class PlayerListener implements Listener {
 
     public static ArrayList<Player> quebraTudo = new ArrayList<Player>();
-    private final DeliveryManager deliveryManager = BukkitUtils.getDeliveryManager();
 
-    @EventHandler
-    public void onPlayerJoin(PlayerJoinEvent event){
-
-        if (BukkitUtils.discordManager != null) {
-            BukkitUtils.discordManager.updateStatus();
-        }
-
-        event.setJoinMessage("§8[§a+§8]§f " + event.getPlayer().getName());
-        if (quebraTudo.contains(event.getPlayer())) {
-            quebraTudo.remove(event.getPlayer());
-        }
-
-        if (deliveryManager.hasDelivery(event.getPlayer().getName())) {
-            event.getPlayer().sendMessage(ChatColor.YELLOW + "Você tem uma nova entrega!\n\n" + ChatColor.RED + ChatColor.UNDERLINE + "Lembre-se de liberar espaço no seu inventário para receber seus itens!\n");
-            TextComponent message = new TextComponent(ChatColor.GREEN + "[Clique aqui para abrir sua entrega]");
-            message.setClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/abrircorreio"));
-            event.getPlayer().spigot().sendMessage(message);
-        }
-
-    }
 
     @EventHandler
     public void onPlayerQuit(PlayerQuitEvent event){
