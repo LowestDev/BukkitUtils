@@ -1,5 +1,6 @@
 package me.lowestdev.listener;
 
+import me.lowestdev.BukkitUtils;
 import me.lowestdev.manager.DeliveryManager;
 import org.bukkit.ChatColor;
 import org.bukkit.event.EventHandler;
@@ -12,10 +13,10 @@ import net.md_5.bungee.api.chat.TextComponent;
 
 public class CorreioListener implements Listener {
 
-    private final DeliveryManager deliveryManager;
+    private final DeliveryManager deliveryManager = BukkitUtils.getDeliveryManager();
 
-    public CorreioListener(DeliveryManager deliveryManager) {
-        this.deliveryManager = deliveryManager;
+    public CorreioListener() {
+
     }
 
     @EventHandler

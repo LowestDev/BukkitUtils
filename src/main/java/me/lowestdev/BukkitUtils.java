@@ -3,6 +3,7 @@ package me.lowestdev;
 import me.lowestdev.cmd.CancelarEntregaCommand;
 import me.lowestdev.cmd.LixoCommand;
 import me.lowestdev.cmd.QuebratudoCommand;
+import me.lowestdev.listener.CorreioListener;
 import me.lowestdev.listener.PlayerListener;
 import me.lowestdev.manager.ConfigManager;
 import me.lowestdev.manager.DeliveryManager;
@@ -87,6 +88,7 @@ public class BukkitUtils extends JavaPlugin {
 
         getLogger().info("Registering events for the player listeners...");
         getServer().getPluginManager().registerEvents(new PlayerListener(), this);
+        getServer().getPluginManager().registerEvents(new CorreioListener(), this);
         getLogger().info("Successfully registered events for the player listeners.");
 
         getLogger().info("Registering commands...");
