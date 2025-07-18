@@ -14,7 +14,7 @@ public class ListarEntregasCommand extends Command {
 
     private final DeliveryManager deliveryManager = BukkitUtils.getDeliveryManager();
 
-    public ListarEntregasCommand(me.lowestdev.BukkitUtils plugin, DeliveryManager deliveryManager) {
+    public ListarEntregasCommand() {
         super("listareentregas");
     }
 
