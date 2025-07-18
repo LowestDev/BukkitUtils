@@ -116,4 +116,45 @@ public class CorreioCommand extends Command {
         return (ItemStack) asBukkitCopy.invoke(null, nmsItemStack);
     }
 
+    @Override
+    public List<String> tabComplete(CommandSender sender, String alias, String[] args) {
+        List<String> completions = new ArrayList<>();
+
+        if (args.length == 1) {
+            // Suggest player names
+            String partialName = args[0].toLowerCase();
+            for (OfflinePlayer offlinePlayer : Bukkit.getOfflinePlayers()) {
+                String name = offlinePlayer.getName();
+                if (name != null && name.toLowerCase().startsWith(partialName)) {
+                    completions.add(name);
+                }
+            }
+        } else if (args.length == 2) {
+            try {
+                String[] current = args[1].split(",");
+                String last = current[current.length - 1].toLowerCase();
+
+                // Use ForgeRegistries.ITEMS.keySet() to get all item keys
+                Class<?> forgeRegistries = Class.forName("net.minecraftforge.registries.ForgeRegistries");
+                Object itemRegistry = forgeRegistries.getField("ITEMS").get(null);
+
+                Method getKeysMethod = itemRegistry.getClass().getMethod("getKeys");
+                @SuppressWarnings("unchecked")
+                Iterable<Object> keys = (Iterable<Object>) getKeysMethod.invoke(itemRegistry);
+
+                for (Object resourceLocation : keys) {
+                    String keyStr = resourceLocation.toString(); // e.g. "minecraft:stone", "modid:itemname"
+                    if (keyStr.toLowerCase().startsWith(last)) {
+                        completions.add(keyStr);
+                    }
+                }
+            } catch (Exception e) {
+                // Fail silently to avoid crashing tab completion
+            }
+        }
+
+        return completions;
+    }
+
+
 }
