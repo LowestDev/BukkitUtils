@@ -4,6 +4,7 @@ import me.lowestdev.BukkitUtils;
 import me.lowestdev.manager.DeliveryManager;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
+import org.bukkit.Material;
 import org.bukkit.OfflinePlayer;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
@@ -96,25 +97,43 @@ public class CorreioCommand extends Command {
         }
     }
 
-    private ItemStack getItemStackFromKey(String key) throws Exception {
-        Class<?> minecraftKeyClass = Class.forName("net.minecraft.resources.MinecraftKey");
-        Object minecraftKey = minecraftKeyClass.getConstructor(String.class).newInstance(key);
+    private ItemStack getItemStackFromKey(String key) {
+        try {
+            // Try Bukkit first (vanilla)
+            Material material = Material.matchMaterial(key);
+            if (material != null) {
+                return new ItemStack(material);
+            }
 
-        Class<?> builtInRegistriesClass = Class.forName("net.minecraft.core.registries.BuiltInRegistries");
-        Object itemRegistry = builtInRegistriesClass.getField("ITEM").get(null);
+            // Then try Mohist's Forge registry via Mojang mappings
+            Object minecraftKey = Class.forName("net.minecraft.resources.MinecraftKey")
+                    .getConstructor(String.class)
+                    .newInstance(key);
 
-        Method getMethod = itemRegistry.getClass().getMethod("get", Object.class);
-        Object nmsItem = getMethod.invoke(itemRegistry, minecraftKey);
+            Object itemRegistry = Class.forName("net.minecraft.core.registries.BuiltInRegistries")
+                    .getField("ITEM")
+                    .get(null);
 
-        if (nmsItem == null) return null;
+            Object nmsItem = itemRegistry.getClass()
+                    .getMethod("get", Object.class)
+                    .invoke(itemRegistry, minecraftKey);
 
-        Class<?> itemStackClass = Class.forName("net.minecraft.world.item.ItemStack");
-        Object nmsItemStack = itemStackClass.getConstructor(nmsItem.getClass()).newInstance(nmsItem);
+            if (nmsItem == null) return null;
 
-        Class<?> craftItemStackClass = Class.forName("org.bukkit.craftbukkit.v1_20_R1.inventory.CraftItemStack");
-        Method asBukkitCopy = craftItemStackClass.getMethod("asBukkitCopy", itemStackClass);
-        return (ItemStack) asBukkitCopy.invoke(null, nmsItemStack);
+            Object nmsItemStack = Class.forName("net.minecraft.world.item.ItemStack")
+                    .getConstructor(nmsItem.getClass())
+                    .newInstance(nmsItem);
+
+            return (ItemStack) Class.forName("org.bukkit.craftbukkit.v1_20_R1.inventory.CraftItemStack")
+                    .getMethod("asBukkitCopy", Class.forName("net.minecraft.world.item.ItemStack"))
+                    .invoke(null, nmsItemStack);
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
+        }
     }
+
 
     @Override
     public List<String> tabComplete(CommandSender sender, String alias, String[] args) {
