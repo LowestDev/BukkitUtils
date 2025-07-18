@@ -2,13 +2,16 @@ package me.lowestdev.cmd.maintenance;
 
 import me.lowestdev.BukkitUtils;
 import me.lowestdev.manager.DeliveryManager;
+import me.lowestdev.manager.DeliveryManager.DeliverySlot;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.Inventory;
+import org.bukkit.inventory.ItemStack;
 
+import java.util.ArrayList;
 import java.util.List;
 
 public class AbrirCorreioCommand extends Command {
@@ -33,15 +36,25 @@ public class AbrirCorreioCommand extends Command {
             return true;
         }
 
-        List<org.bukkit.inventory.ItemStack> items = deliveryManager.getAndRemoveNextDelivery(playerName);
-        if (items == null || items.isEmpty()) {
+        // Fetch all delivery slots
+        List<DeliverySlot> deliveries = deliveryManager.getDeliveries(playerName);
+        if (deliveries.isEmpty()) {
             player.sendMessage(ChatColor.YELLOW + "Nenhuma entrega disponível no momento.");
             return true;
         }
 
+        // Merge all items from all delivery slots into one list
+        List<ItemStack> allItems = new ArrayList<>();
+        for (DeliverySlot slot : deliveries) {
+            allItems.addAll(slot.items);
+        }
+
+        // Create inventory and open it to player
         Inventory inv = Bukkit.createInventory(player, 54, ChatColor.GREEN + "Entrega para " + playerName);
-        inv.setContents(items.toArray(new org.bukkit.inventory.ItemStack[0]));
+        inv.setContents(allItems.toArray(new ItemStack[0]));
         player.openInventory(inv);
+
+        // Note: actual removal of items/deliveries must happen in a listener when player takes items
 
         return true;
     }

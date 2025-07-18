@@ -1,6 +1,9 @@
 package me.lowestdev.manager;
 
 import me.lowestdev.BukkitUtils;
+import org.bukkit.Bukkit;
+import org.bukkit.command.CommandSender;
+import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.util.io.BukkitObjectInputStream;
@@ -75,35 +78,49 @@ public class DeliveryManager {
         return items;
     }
 
-    /**
-     * Adds a delivery to the database for the target player.
-     *
-     * @param targetPlayerName The name of the player who will receive the delivery.
-     * @param items           The list of items to deliver.
-     * @param senderName      The name of the sender (can be console or player name).
-     */
     public synchronized void addDelivery(String targetPlayerName, List<ItemStack> items, String senderName) {
-        try (PreparedStatement stmt = connection.prepareStatement(
-                "INSERT INTO deliveries (player_name, sender_name, items) VALUES (?, ?, ?)")) {
-            stmt.setString(1, targetPlayerName.toLowerCase(Locale.ROOT));
-            stmt.setString(2, senderName);
-            stmt.setString(3, serializeItems(items));
-            stmt.executeUpdate();
+        try {
+            // Check if a delivery already exists
+            List<DeliverySlot> slots = getDeliveries(targetPlayerName);
+            boolean added = false;
+
+            for (DeliverySlot slot : slots) {
+                if (slot.senderName.equals(senderName)) {
+                    // Add to existing delivery slot
+                    slot.items.addAll(items);
+                    updateDelivery(slot.id, slot.items);
+                    added = true;
+                    break;
+                }
+            }
+
+            if (!added) {
+                // Create new delivery slot
+                try (PreparedStatement stmt = connection.prepareStatement(
+                        "INSERT INTO deliveries (player_name, sender_name, items) VALUES (?, ?, ?)")) {
+                    stmt.setString(1, targetPlayerName.toLowerCase(Locale.ROOT));
+                    stmt.setString(2, senderName);
+                    stmt.setString(3, serializeItems(items));
+                    stmt.executeUpdate();
+                }
+            }
+
+            plugin.getLogger().info("Entrega registrada para " + targetPlayerName + " por " + senderName);
+
+            Player senderPlayer = Bukkit.getPlayerExact(senderName);
+            if (senderPlayer != null) {
+                senderPlayer.sendMessage("§aEntrega enviada com sucesso para §e" + targetPlayerName + "§a!");
+            }
+
         } catch (Exception e) {
             plugin.getLogger().log(Level.SEVERE, "Erro ao adicionar entrega no banco de dados", e);
         }
     }
 
-    /**
-     * Overload to add delivery assuming sender is the console.
-     */
     public void addDelivery(String targetPlayerName, List<ItemStack> items) {
         addDelivery(targetPlayerName, items, "CONSOLE");
     }
 
-    /**
-     * Checks if the player has pending deliveries.
-     */
     public synchronized boolean hasDelivery(String playerName) {
         try (PreparedStatement stmt = connection.prepareStatement(
                 "SELECT COUNT(*) FROM deliveries WHERE player_name = ?")) {
@@ -118,50 +135,59 @@ public class DeliveryManager {
         return false;
     }
 
-    /**
-     * Returns and removes the next delivery for a player.
-     */
-    public synchronized List<ItemStack> getAndRemoveNextDelivery(String playerName) {
-        try {
-            connection.setAutoCommit(false);
-
-            try (PreparedStatement selectStmt = connection.prepareStatement(
-                    "SELECT id, items FROM deliveries WHERE player_name = ? ORDER BY id ASC LIMIT 1")) {
-                selectStmt.setString(1, playerName.toLowerCase(Locale.ROOT));
-                ResultSet rs = selectStmt.executeQuery();
-
-                if (!rs.next()) {
-                    connection.commit();
-                    return null;
-                }
-
+    public synchronized List<DeliverySlot> getDeliveries(String playerName) {
+        List<DeliverySlot> slots = new ArrayList<>();
+        try (PreparedStatement stmt = connection.prepareStatement(
+                "SELECT id, sender_name, items FROM deliveries WHERE player_name = ?")) {
+            stmt.setString(1, playerName.toLowerCase(Locale.ROOT));
+            ResultSet rs = stmt.executeQuery();
+            while (rs.next()) {
                 int id = rs.getInt("id");
-                String itemsData = rs.getString("items");
-                List<ItemStack> items = deserializeItems(itemsData);
-
-                try (PreparedStatement deleteStmt = connection.prepareStatement(
-                        "DELETE FROM deliveries WHERE id = ?")) {
-                    deleteStmt.setInt(1, id);
-                    deleteStmt.executeUpdate();
-                }
-
-                connection.commit();
-                return items;
-            } catch (Exception e) {
-                connection.rollback();
-                plugin.getLogger().log(Level.SEVERE, "Erro ao ler ou deletar entrega no banco de dados", e);
-            } finally {
-                connection.setAutoCommit(true);
+                String sender = rs.getString("sender_name");
+                String data = rs.getString("items");
+                List<ItemStack> items = deserializeItems(data);
+                slots.add(new DeliverySlot(id, sender, items));
             }
-        } catch (SQLException e) {
-            plugin.getLogger().log(Level.SEVERE, "Erro no banco de dados SQLite", e);
+        } catch (Exception e) {
+            plugin.getLogger().log(Level.SEVERE, "Erro ao buscar entregas", e);
         }
-        return null;
+        return slots;
     }
 
-    /**
-     * Returns all player names who have pending deliveries.
-     */
+    public synchronized void removeItemFromDelivery(int deliveryId, ItemStack toRemove) {
+        try (PreparedStatement stmt = connection.prepareStatement(
+                "SELECT items FROM deliveries WHERE id = ?")) {
+            stmt.setInt(1, deliveryId);
+            ResultSet rs = stmt.executeQuery();
+            if (!rs.next()) return;
+
+            List<ItemStack> items = deserializeItems(rs.getString("items"));
+            items.removeIf(item -> item != null && item.isSimilar(toRemove) && item.getAmount() == toRemove.getAmount());
+
+            if (items.isEmpty()) {
+                try (PreparedStatement deleteStmt = connection.prepareStatement(
+                        "DELETE FROM deliveries WHERE id = ?")) {
+                    deleteStmt.setInt(1, deliveryId);
+                    deleteStmt.executeUpdate();
+                }
+            } else {
+                updateDelivery(deliveryId, items);
+            }
+
+        } catch (Exception e) {
+            plugin.getLogger().log(Level.SEVERE, "Erro ao remover item de entrega", e);
+        }
+    }
+
+    private void updateDelivery(int deliveryId, List<ItemStack> updatedItems) throws Exception {
+        try (PreparedStatement stmt = connection.prepareStatement(
+                "UPDATE deliveries SET items = ? WHERE id = ?")) {
+            stmt.setString(1, serializeItems(updatedItems));
+            stmt.setInt(2, deliveryId);
+            stmt.executeUpdate();
+        }
+    }
+
     public synchronized Set<String> getPendingPlayers() {
         Set<String> players = new HashSet<>();
         try (PreparedStatement stmt = connection.prepareStatement(
@@ -176,19 +202,14 @@ public class DeliveryManager {
         return players;
     }
 
-    /**
-     * Returns total count of items pending for a player.
-     */
     public synchronized int getItemCount(String playerName) {
         int total = 0;
         try (PreparedStatement stmt = connection.prepareStatement(
                 "SELECT items FROM deliveries WHERE player_name = ?")) {
             stmt.setString(1, playerName.toLowerCase(Locale.ROOT));
             ResultSet rs = stmt.executeQuery();
-
             while (rs.next()) {
-                String data = rs.getString("items");
-                List<ItemStack> items = deserializeItems(data);
+                List<ItemStack> items = deserializeItems(rs.getString("items"));
                 for (ItemStack item : items) {
                     if (item != null) total += item.getAmount();
                 }
@@ -199,87 +220,70 @@ public class DeliveryManager {
         return total;
     }
 
-    /**
-     * Cancels all queued deliveries for the target player, returning items back to senders as new deliveries.
-     *
-     * @param targetPlayerName The player whose deliveries should be canceled.
-     * @param pluginInstance   Your plugin main instance (for scheduler).
-     * @return Number of deliveries canceled.
-     */
     public synchronized int cancelDeliveries(String targetPlayerName, Plugin pluginInstance) {
         int canceledCount = 0;
-
         try {
             connection.setAutoCommit(false);
 
-            // Get all deliveries for player
-            List<Integer> deliveryIds = new ArrayList<>();
-            List<List<ItemStack>> deliveriesList = new ArrayList<>();
-            List<String> senderNames = new ArrayList<>();
-
-            try (PreparedStatement selectStmt = connection.prepareStatement(
+            try (PreparedStatement stmt = connection.prepareStatement(
                     "SELECT id, sender_name, items FROM deliveries WHERE player_name = ?")) {
-                selectStmt.setString(1, targetPlayerName.toLowerCase(Locale.ROOT));
-                ResultSet rs = selectStmt.executeQuery();
+                stmt.setString(1, targetPlayerName.toLowerCase(Locale.ROOT));
+                ResultSet rs = stmt.executeQuery();
 
                 while (rs.next()) {
-                    deliveryIds.add(rs.getInt("id"));
-                    senderNames.add(rs.getString("sender_name"));
-                    deliveriesList.add(deserializeItems(rs.getString("items")));
-                }
-            }
+                    int id = rs.getInt("id");
+                    String sender = rs.getString("sender_name");
+                    List<ItemStack> items = deserializeItems(rs.getString("items"));
 
-            if (deliveryIds.isEmpty()) {
-                connection.commit();
-                return 0;
-            }
+                    try (PreparedStatement deleteStmt = connection.prepareStatement(
+                            "DELETE FROM deliveries WHERE id = ?")) {
+                        deleteStmt.setInt(1, id);
+                        deleteStmt.executeUpdate();
+                    }
 
-            // Delete canceled deliveries
-            try (PreparedStatement deleteStmt = connection.prepareStatement(
-                    "DELETE FROM deliveries WHERE id = ?")) {
-                for (int id : deliveryIds) {
-                    deleteStmt.setInt(1, id);
-                    deleteStmt.executeUpdate();
+                    if (!"CONSOLE".equalsIgnoreCase(sender)) {
+                        addDelivery(sender, items, "CONSOLE");
+                    }
+
                     canceledCount++;
                 }
             }
 
             connection.commit();
-
-            // Return items to senders as new deliveries (except console)
-            for (int i = 0; i < deliveriesList.size(); i++) {
-                String originalSender = senderNames.get(i);
-                if (!"CONSOLE".equalsIgnoreCase(originalSender)) {
-                    addDelivery(originalSender, deliveriesList.get(i), "CONSOLE");
-                }
-            }
-
         } catch (Exception e) {
             try {
                 connection.rollback();
             } catch (SQLException ex) {
-                plugin.getLogger().log(Level.SEVERE, "Erro ao fazer rollback no banco de dados", ex);
+                plugin.getLogger().log(Level.SEVERE, "Erro ao fazer rollback", ex);
             }
-            plugin.getLogger().log(Level.SEVERE, "Erro ao cancelar entregas no banco de dados", e);
+            plugin.getLogger().log(Level.SEVERE, "Erro ao cancelar entregas", e);
         } finally {
             try {
                 connection.setAutoCommit(true);
             } catch (SQLException e) {
-                plugin.getLogger().log(Level.SEVERE, "Erro ao setar autoCommit true", e);
+                plugin.getLogger().log(Level.SEVERE, "Erro ao restaurar autoCommit", e);
             }
         }
-
         return canceledCount;
     }
 
-    /**
-     * Closes the database connection cleanly.
-     */
     public synchronized void close() {
         try {
             if (connection != null && !connection.isClosed()) connection.close();
         } catch (SQLException e) {
             plugin.getLogger().log(Level.SEVERE, "Erro ao fechar conexão com banco de dados", e);
+        }
+    }
+
+    public static class DeliverySlot {
+        public int id;
+        public String senderName;
+        public List<ItemStack> items;
+
+        public DeliverySlot(int id, String senderName, List<ItemStack> items) {
+            this.id = id;
+            this.senderName = senderName;
+            this.items = items;
         }
     }
 }
