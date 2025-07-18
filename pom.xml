@@ -14,10 +14,13 @@
     </properties>
 
     <repositories>
+        <!-- Spigot repository for API -->
         <repository>
             <id>spigot-repo</id>
             <url>https://hub.spigotmc.org/nexus/content/repositories/snapshots/</url>
         </repository>
+
+        <!-- Other repositories -->
         <repository>
             <id>jcenter</id>
             <url>https://jcenter.bintray.com/</url>
@@ -34,6 +37,7 @@
     </repositories>
 
     <dependencies>
+        <!-- Spigot API for plugin compilation -->
         <dependency>
             <groupId>org.spigotmc</groupId>
             <artifactId>spigot-api</artifactId>
@@ -41,22 +45,40 @@
             <scope>provided</scope>
         </dependency>
 
+        <!-- Mohist jar installed locally, also provided -->
+        <dependency>
+            <groupId>net.minecraft.server</groupId>
+            <artifactId>server</artifactId>
+            <version>1.20.1</version>
+            <scope>provided</scope>
+        </dependency>
+
+        <!-- JDA dependency -->
         <dependency>
             <groupId>net.dv8tion</groupId>
             <artifactId>JDA</artifactId>
             <version>5.0.0-beta.20</version>
         </dependency>
 
+        <!-- JSON -->
         <dependency>
             <groupId>org.json</groupId>
             <artifactId>json</artifactId>
             <version>20250517</version>
         </dependency>
 
+        <!-- Reflections -->
         <dependency>
             <groupId>org.reflections</groupId>
             <artifactId>reflections</artifactId>
             <version>0.10.2</version>
+        </dependency>
+
+        <!-- SQLite JDBC Driver for SQLite persistence -->
+        <dependency>
+            <groupId>org.xerial</groupId>
+            <artifactId>sqlite-jdbc</artifactId>
+            <version>3.42.0.0</version>
         </dependency>
     </dependencies>
 

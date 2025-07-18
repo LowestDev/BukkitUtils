@@ -1,10 +1,12 @@
 package me.lowestdev;
 
+import me.lowestdev.cmd.CancelarEntregaCommand;
+import me.lowestdev.cmd.LixoCommand;
+import me.lowestdev.cmd.QuebratudoCommand;
 import me.lowestdev.listener.PlayerListener;
 import me.lowestdev.manager.ConfigManager;
+import me.lowestdev.manager.DeliveryManager;
 import me.lowestdev.manager.DiscordManager;
-import me.lowestdev.manager.PermissionManager;
-import me.lowestdev.manager.StorageManager;
 import me.lowestdev.updater.GitHubUpdater;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
@@ -16,33 +18,32 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.ShapedRecipe;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.java.JavaPlugin;
-import org.reflections.Reflections;
-import org.reflections.scanners.Scanners;
 
 import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.Field;
-import java.util.Set;
 
 public class BukkitUtils extends JavaPlugin {
 
     private static BukkitUtils instance;
     public static DiscordManager discordManager;
     private ConfigManager configManager;
-    private PermissionManager permissionManager;
-    private StorageManager storageManager;
+    public static DeliveryManager deliveryManager;
 
     private GitHubUpdater updater;
 
     public static Plugin pl;
 
-    public void onLoad(){ getLogger().info("BukkitUtils has been successfully loaded."); }
+    @Override
+    public void onLoad() {
+        getLogger().info("BukkitUtils has been successfully loaded.");
+    }
 
-    public void onEnable(){
+    @Override
+    public void onEnable() {
         getLogger().info("BukkitUtils has been successfully enabled.");
         pl = this;
         instance = this;
-
 
         createDefaultConfig("config.yml");
         createDefaultConfig("data.yml");
@@ -52,14 +53,20 @@ public class BukkitUtils extends JavaPlugin {
 
         configManager = new ConfigManager(this);
 
-        updater = new GitHubUpdater(this, "LowestDev", "BukkitUtils");
-        updater.checkForUpdates();
-
+        // Initialize DeliveryManager (SQLite)
+        try {
+            File dbFile = new File(getDataFolder(), "deliveries.db");
+            deliveryManager = new DeliveryManager();
+            getLogger().info("DeliveryManager initialized successfully.");
+        } catch (Exception e) {
+            getLogger().severe("Failed to initialize DeliveryManager: " + e.getMessage());
+            e.printStackTrace();
+        }
 
         boolean discordEnabled = getConfig().getBoolean("discord.enabled", false);
-        String token = getConfig().getString("discord.token", null);
-        String channelId = getConfig().getString("discord.channel-id", null);
-        String guildId = getConfig().getString("discord.guild-id", null);
+        String token = getConfig().getString("discord.token", "");
+        String channelId = getConfig().getString("discord.channel-id", "");
+        String guildId = getConfig().getString("discord.guild-id", "");
 
         if (discordEnabled) {
             if (token == null || token.isEmpty()) {
@@ -72,29 +79,26 @@ public class BukkitUtils extends JavaPlugin {
             getLogger().info("Discord integration disabled in config.");
         }
 
-        boolean permissionsEnabled = getConfig().getBoolean("permissions.use-permissions", true);
-        if (permissionsEnabled) {
-            permissionManager = new PermissionManager(this, storageManager);
-            permissionManager.loadAll();
-            getLogger().info("Permissions system enabled.");
-        } else {
-            getLogger().info("Permissions system disabled in config.");
-        }
-
-        registerCommands();
-
-        getLogger().info("Adding saddle recipe...");
         addSaddleRecipe();
-        getLogger().info("Saddle recipe has been added.");
 
         getLogger().info("Registering events for the player listeners...");
         getServer().getPluginManager().registerEvents(new PlayerListener(), this);
         getLogger().info("Successfully registered events for the player listeners.");
+
+        getLogger().info("Registering commands...");
+        registerDynamicCommand(new QuebratudoCommand());
+        registerDynamicCommand(new LixoCommand());
+        registerDynamicCommand(new CancelarEntregaCommand(deliveryManager));
+        getLogger().info("Successfully registered commands.");
     }
 
-    public void onDisable(){
+    @Override
+    public void onDisable() {
         if (discordManager != null) {
             discordManager.shutdown(false);
+        }
+        if (deliveryManager != null) {
+            deliveryManager.close();
         }
         if (updater != null) updater.checkForUpdates();
         getLogger().info("BukkitUtils has been successfully disabled.");
@@ -102,18 +106,13 @@ public class BukkitUtils extends JavaPlugin {
 
     private void addSaddleRecipe() {
         ItemStack saddle = new ItemStack(Material.SADDLE);
-
         NamespacedKey key = new NamespacedKey(this, "custom_saddle");
 
         ShapedRecipe recipe = new ShapedRecipe(key, saddle);
-        recipe.shape(
-                " L ",
-                "LIL"
-        );
+        recipe.shape(" L ", "LIL");
         recipe.setIngredient('L', Material.LEATHER);
         recipe.setIngredient('I', Material.IRON_INGOT);
 
-        // Register the recipe
         Bukkit.addRecipe(recipe);
     }
 
@@ -121,32 +120,8 @@ public class BukkitUtils extends JavaPlugin {
         return instance;
     }
 
-    private void registerCommands() {
-        try {
-            // Get command map
-            Field commandMapField = getServer().getClass().getDeclaredField("commandMap");
-            commandMapField.setAccessible(true);
-            CommandMap commandMap = (CommandMap) commandMapField.get(getServer());
-
-            // Scan the package
-            Reflections reflections = new Reflections("me.lowestdev.cmd", Scanners.SubTypes.filterResultsBy(s -> true));
-            Set<Class<? extends Command>> commandClasses = reflections.getSubTypesOf(Command.class);
-
-            for (Class<? extends Command> cmdClass : commandClasses) {
-                try {
-                    // Try to instantiate the command (assuming it has a constructor taking your plugin)
-                    Command commandInstance = cmdClass.getDeclaredConstructor(JavaPlugin.class).newInstance(this);
-                    commandMap.register(getDescription().getName(), commandInstance);
-                    getLogger().info("Registered command: " + commandInstance.getName());
-                } catch (Exception instantiationException) {
-                    getLogger().warning("Could not instantiate command: " + cmdClass.getName());
-                    instantiationException.printStackTrace();
-                }
-            }
-        } catch (Exception e) {
-            getLogger().severe("Failed to register commands dynamically: " + e.getMessage());
-            e.printStackTrace();
-        }
+    public static DeliveryManager getDeliveryManager() {
+        return deliveryManager;
     }
 
     private void createDefaultConfig(String filename) {
@@ -172,54 +147,34 @@ public class BukkitUtils extends JavaPlugin {
         FileConfiguration config = getConfig();
         boolean changed = false;
 
-        if (!config.isSet("discord.enabled"))       { config.set("discord.enabled", true); changed = true; }
-        if (!config.isSet("discord.token"))         { config.set("discord.token", ""); changed = true; }
-        if (!config.isSet("discord.channel-id"))    { config.set("discord.channel-id", ""); changed = true; }
-        if (!config.isSet("discord.guild-id"))      { config.set("discord.guild-id", ""); changed = true; }
-
-        if (!config.isSet("permissions.use-permissions")) {
-            config.set("permissions.use-permissions", true);
-            changed = true;
-        }
-        if (!config.isSet("storage.type")) {
-            config.set("storage.type", "sqlite");
-            changed = true;
-        }
-        if (!config.isSet("permissions.mysql.enabled")) {
-            config.set("permissions.mysql.enabled", false);
-            changed = true;
-        }
-        if (!config.isSet("permissions.mysql.host")) {
-            config.set("permissions.mysql.host", "localhost");
-            changed = true;
-        }
-        if (!config.isSet("permissions.mysql.port")) {
-            config.set("permissions.mysql.port", 3306);
-            changed = true;
-        }
-        if (!config.isSet("permissions.mysql.database")) {
-            config.set("permissions.mysql.database", "bukkitutils");
-            changed = true;
-        }
-        if (!config.isSet("permissions.mysql.username")) {
-            config.set("permissions.mysql.username", "user");
-            changed = true;
-        }
-        if (!config.isSet("permissions.mysql.password")) {
-            config.set("permissions.mysql.password", "pass");
-            changed = true;
-        }
+        if (!config.isSet("discord.enabled")) { config.set("discord.enabled", true); changed = true; }
+        if (!config.isSet("discord.token")) { config.set("discord.token", ""); changed = true; }
+        if (!config.isSet("discord.channel-id")) { config.set("discord.channel-id", ""); changed = true; }
+        if (!config.isSet("discord.guild-id")) { config.set("discord.guild-id", ""); changed = true; }
 
         if (changed) {
             saveConfig();
         }
     }
 
+    private void registerDynamicCommand(Command command) {
+        try {
+            Field commandMapField = Bukkit.getServer().getClass().getDeclaredField("commandMap");
+            commandMapField.setAccessible(true);
+            CommandMap commandMap = (CommandMap) commandMapField.get(Bukkit.getServer());
+            commandMap.register(getDescription().getName(), command);
+        } catch (Exception e) {
+            getLogger().severe("Failed to register command dynamically: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
 
     public void reloadPlugin() {
         reloadConfig();
         configManager.reload();
-        discordManager.shutdown(false);
-        discordManager.start();
+        if (discordManager != null) {
+            discordManager.shutdown(false);
+            discordManager.start();
+        }
     }
 }
