@@ -78,6 +78,7 @@ public class BukkitUtils extends JavaPlugin {
         } else {
             getLogger().info("Discord integration disabled in config.");
         }
+        String mapUrl = getConfig().getString("map.url", "");
 
         updater = new GitHubUpdater(getInstance(), "LowestDev", "BukkitUtils");
 
@@ -148,6 +149,8 @@ public class BukkitUtils extends JavaPlugin {
         FileConfiguration config = getConfig();
         boolean changed = false;
 
+        if (!config.isSet("map.enabled")) { config.set("map.enabled", false); changed = true; }
+        if (!config.isSet("map.url")) { config.set("map.url", ""); changed = true; }
         if (!config.isSet("discord.enabled")) { config.set("discord.enabled", true); changed = true; }
         if (!config.isSet("discord.token")) { config.set("discord.token", ""); changed = true; }
         if (!config.isSet("discord.channel-id")) { config.set("discord.channel-id", ""); changed = true; }

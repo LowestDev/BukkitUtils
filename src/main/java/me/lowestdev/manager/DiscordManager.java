@@ -102,6 +102,7 @@ public class DiscordManager {
         eb.setTitle("Status do servidor :)");
         eb.setColor(online ? Color.GREEN : Color.RED);
         eb.setDescription(online ? "🟢 Servidor online!" : "🔴 Servidor offline...");
+        if (config.isMapEnabled()) { eb.addField("Mapa do servidor", "[Clique aqui](" + config.getMapLink() + ")", false); }
         eb.addField("Players Online", String.valueOf(Bukkit.getOnlinePlayers().size()), true);
 
         String players = Bukkit.getOnlinePlayers().stream()

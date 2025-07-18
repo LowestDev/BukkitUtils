@@ -47,6 +47,12 @@ public class ConfigManager {
         return plugin.getConfig().getString("discord.channel-id");
     }
 
+    public String getMapLink() {
+        return plugin.getConfig().getString("map.url");
+    }
+
+    public Boolean isMapEnabled() { return plugin.getConfig().getBoolean("map.enabled"); }
+
     public long getStatusMessageId() {
         return data.getLong("status-message-id", -1);
     }
