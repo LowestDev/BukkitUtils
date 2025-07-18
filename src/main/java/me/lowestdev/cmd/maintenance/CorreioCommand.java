@@ -1,4 +1,4 @@
-package me.lowestdev.cmd;
+package me.lowestdev.cmd.maintenance;
 
 import me.lowestdev.BukkitUtils;
 import me.lowestdev.manager.DeliveryManager;
@@ -13,7 +13,6 @@ import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.plugin.java.JavaPlugin;
 
-import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.List;

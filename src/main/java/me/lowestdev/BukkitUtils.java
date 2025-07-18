@@ -1,8 +1,5 @@
 package me.lowestdev;
 
-import me.lowestdev.cmd.CancelarEntregaCommand;
-import me.lowestdev.cmd.LixoCommand;
-import me.lowestdev.cmd.QuebratudoCommand;
 import me.lowestdev.listener.CorreioListener;
 import me.lowestdev.listener.PlayerListener;
 import me.lowestdev.manager.ConfigManager;
