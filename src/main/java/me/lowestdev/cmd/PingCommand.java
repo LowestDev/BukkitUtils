@@ -23,6 +23,8 @@ public class PingCommand extends Command {
         super("ping");
         this.setDescription("Mostra o seu ping ou o de outro jogador");
         this.setUsage("/ping [jogador]");
+        this.setPermission("utils.ping");
+        this.setPermissionMessage("§cVocê não tem permissão para usar este comando.");
     }
 
     @Override

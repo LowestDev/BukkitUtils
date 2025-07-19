@@ -18,10 +18,12 @@ import org.bukkit.inventory.ShapedRecipe;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.SimplePluginManager;
 import org.bukkit.plugin.java.JavaPlugin;
+import org.reflections.ReflectionUtils;
 
 import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.Field;
+import java.util.Map;
 
 public class BukkitUtils extends JavaPlugin {
 
@@ -163,7 +165,7 @@ public class BukkitUtils extends JavaPlugin {
 
     public void registerDynamicCommand() {
         try {
-            // Get the CommandMap from the server's PluginManager via reflection
+            // Access the CommandMap from the server
             CommandMap commandMap = null;
             if (getServer().getPluginManager() instanceof SimplePluginManager) {
                 Field commandMapField = SimplePluginManager.class.getDeclaredField("commandMap");
@@ -175,15 +177,22 @@ public class BukkitUtils extends JavaPlugin {
                 getLogger().warning("CommandMap is null, commands will not be registered!");
                 return;
             }
+
+            // Get the knownCommands map to allow unregistering
+            Field knownCommandsField = commandMap.getClass().getDeclaredField("knownCommands");
+            knownCommandsField.setAccessible(true);
+            @SuppressWarnings("unchecked")
+            Map<String, Command> knownCommands = (Map<String, Command>) knownCommandsField.get(commandMap);
+
             for (Class<?> clazz : ClassGetter.getClassesForPackage(getInstance(), "me.lowestdev.cmd")) {
-                // Only process classes that extend Bukkit's Command
                 if (Command.class.isAssignableFrom(clazz)) {
-                    // Instantiate command using no-arg constructor
                     Command cmd = (Command) clazz.getDeclaredConstructor().newInstance();
 
-                    // Register the command with your plugin's name as fallback prefix
+                    String name = cmd.getName().toLowerCase();
+                    knownCommands.remove(name);
+                    knownCommands.remove(getDescription().getName().toLowerCase() + ":" + name);
+                    knownCommands.remove("mohist:" + name);
                     commandMap.register(getDescription().getName(), cmd);
-
                     getLogger().info("Registered command: " + cmd.getName());
                 }
             }
