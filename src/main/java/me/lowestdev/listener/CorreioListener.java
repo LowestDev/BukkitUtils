@@ -2,24 +2,36 @@ package me.lowestdev.listener;
 
 import me.lowestdev.BukkitUtils;
 import me.lowestdev.manager.DeliveryManager;
-import me.lowestdev.manager.DeliveryManager.DeliverySlot;
 import net.md_5.bungee.api.chat.ClickEvent;
 import net.md_5.bungee.api.chat.TextComponent;
+import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
-import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
+import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.inventory.InventoryCloseEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
-import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 
-import java.util.*;
+import java.util.Map;
+import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class CorreioListener implements Listener {
 
     private final DeliveryManager deliveryManager = BukkitUtils.getDeliveryManager();
+
+    // Map to track currently opened delivery slot per player
+    private final Map<UUID, DeliveryManager.DeliverySlot> openDeliverySlots = new ConcurrentHashMap<>();
+
+    public void setOpenDeliverySlot(Player player, DeliveryManager.DeliverySlot slot) {
+        openDeliverySlots.put(player.getUniqueId(), slot);
+    }
+
+    public void clearOpenDeliverySlot(Player player) {
+        openDeliverySlots.remove(player.getUniqueId());
+    }
 
     @EventHandler
     public void onPlayerJoin(PlayerJoinEvent event) {
@@ -30,6 +42,7 @@ public class CorreioListener implements Listener {
         }
 
         event.setJoinMessage("§8[§a+§8]§f " + player.getName());
+
         if (PlayerListener.quebraTudo.contains(player)) {
             PlayerListener.quebraTudo.remove(player);
         }
@@ -44,53 +57,29 @@ public class CorreioListener implements Listener {
     }
 
     @EventHandler
-    public void onClose(InventoryCloseEvent event) {
-        if (!event.getView().getTitle().startsWith(ChatColor.GREEN + "Entrega para ")) {
-            return;
-        }
+    public void onInventoryClick(InventoryClickEvent event) {
+        if (!(event.getWhoClicked() instanceof Player player)) return;
 
-        Player player = (Player) event.getPlayer();
-        String playerName = player.getName();
+        DeliveryManager.DeliverySlot slot = openDeliverySlots.get(player.getUniqueId());
+        if (slot == null) return;
 
-        Inventory inventory = event.getInventory();
-        Map<ItemStack, Integer> remainingItemsMap = new HashMap<>();
+        ItemStack clickedItem = event.getCurrentItem();
+        if (clickedItem == null || clickedItem.getType().isAir()) return;
 
-        for (ItemStack item : inventory.getContents()) {
-            if (item != null && item.getType() != Material.AIR) {
-                boolean matched = false;
-                for (ItemStack key : remainingItemsMap.keySet()) {
-                    if (key.isSimilar(item)) {
-                        remainingItemsMap.put(key, remainingItemsMap.get(key) + item.getAmount());
-                        matched = true;
-                        break;
-                    }
-                }
-                if (!matched) {
-                    remainingItemsMap.put(item.clone(), item.getAmount());
-                }
-            }
-        }
+        // Remove the item from DB (will also auto-remove the delivery if empty)
+        Bukkit.getScheduler().runTask(BukkitUtils.getInstance(), () -> {
+            deliveryManager.removeItemFromDelivery(slot.id, clickedItem);
+        });
+    }
 
-        List<DeliverySlot> deliveries = deliveryManager.getDeliveries(playerName);
-        if (deliveries.isEmpty()) return;
-
-        for (DeliverySlot slot : deliveries) {
-            Iterator<ItemStack> iter = slot.items.iterator();
-
-            while (iter.hasNext()) {
-                ItemStack original = iter.next();
-
-                for (Map.Entry<ItemStack, Integer> entry : remainingItemsMap.entrySet()) {
-                    ItemStack present = entry.getKey();
-                    int amount = entry.getValue();
-
-                    if (present.isSimilar(original) && amount >= original.getAmount()) {
-                        deliveryManager.removeItemFromDelivery(slot.id, original);
-                        iter.remove();
-                        remainingItemsMap.put(present, amount - original.getAmount());
-                        break;
-                    }
-                }
+    @EventHandler
+    public void onInventoryClose(InventoryCloseEvent event) {
+        if (!(event.getPlayer() instanceof Player player)) return;
+        // Clean up the slot tracking when inventory is closed
+        clearOpenDeliverySlot(player);
+        if (event.getView().getTitle().startsWith(ChatColor.GREEN + "Entrega para ")) {
+            if (event.getView().getTitle().contains(event.getPlayer().getName())) {
+                deliveryManager.cancelDeliveries(event.getPlayer().getName(), BukkitUtils.getInstance());
             }
         }
     }

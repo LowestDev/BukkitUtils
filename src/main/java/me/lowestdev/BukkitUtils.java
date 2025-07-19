@@ -29,7 +29,7 @@ public class BukkitUtils extends JavaPlugin {
     public static DiscordManager discordManager;
     private ConfigManager configManager;
     public static DeliveryManager deliveryManager;
-
+    public static CorreioListener correioListener;
     private GitHubUpdater updater;
 
     public static Plugin pl;
@@ -81,7 +81,7 @@ public class BukkitUtils extends JavaPlugin {
         String mapUrl = getConfig().getString("map.url", "");
 
         updater = new GitHubUpdater(getInstance(), "LowestDev", "BukkitUtils");
-
+        correioListener = new CorreioListener();
         addSaddleRecipe();
 
         getLogger().info("Registering events for the player listeners...");
@@ -202,4 +202,9 @@ public class BukkitUtils extends JavaPlugin {
             discordManager.start();
         }
     }
+
+    public static CorreioListener getCorreioListener() {
+        return correioListener;
+    }
+
 }

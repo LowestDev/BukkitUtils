@@ -17,13 +17,14 @@ import java.util.Base64;
 
 public class DeliveryManager {
 
-    private Plugin plugin = BukkitUtils.getInstance();
+    private final Plugin plugin = BukkitUtils.getInstance();
     private Connection connection;
 
     public DeliveryManager() {
         try {
             openDatabase();
             createTableIfNotExists();
+            plugin.getLogger().info("Banco de dados de entregas iniciado com sucesso.");
         } catch (SQLException e) {
             plugin.getLogger().log(Level.SEVERE, "Erro ao abrir/criar banco de dados SQLite", e);
         }
@@ -50,6 +51,7 @@ public class DeliveryManager {
                 )
                 """;
             stmt.execute(sql);
+            plugin.getLogger().info("Tabela de entregas verificada/criada com sucesso.");
         }
     }
 
@@ -85,7 +87,7 @@ public class DeliveryManager {
             stmt.setString(3, serializeItems(items));
             stmt.executeUpdate();
 
-            plugin.getLogger().info("Entrega registrada para " + targetPlayerName + " por " + senderName);
+            plugin.getLogger().info("Entrega registrada: " + senderName + " → " + targetPlayerName);
 
             Player senderPlayer = Bukkit.getPlayerExact(senderName);
             if (senderPlayer != null) {
@@ -98,6 +100,7 @@ public class DeliveryManager {
     }
 
     public void addDelivery(String targetPlayerName, List<ItemStack> items) {
+        plugin.getLogger().info("Entrega enviada pelo console para " + targetPlayerName);
         addDelivery(targetPlayerName, items, "CONSOLE");
     }
 
@@ -106,9 +109,9 @@ public class DeliveryManager {
                 "SELECT COUNT(*) FROM deliveries WHERE player_name = ?")) {
             stmt.setString(1, playerName.toLowerCase(Locale.ROOT));
             ResultSet rs = stmt.executeQuery();
-            if (rs.next()) {
-                return rs.getInt(1) > 0;
-            }
+            boolean has = rs.next() && rs.getInt(1) > 0;
+            plugin.getLogger().info("Consulta de entregas para " + playerName + ": " + (has ? "possui entregas" : "nenhuma entrega"));
+            return has;
         } catch (SQLException e) {
             plugin.getLogger().log(Level.SEVERE, "Erro ao consultar entregas no banco de dados", e);
         }
@@ -128,6 +131,7 @@ public class DeliveryManager {
                 List<ItemStack> items = deserializeItems(data);
                 slots.add(new DeliverySlot(id, sender, items));
             }
+            plugin.getLogger().info("Entregas carregadas para " + playerName + ": " + slots.size() + " slot(s)");
         } catch (Exception e) {
             plugin.getLogger().log(Level.SEVERE, "Erro ao buscar entregas", e);
         }
@@ -142,16 +146,34 @@ public class DeliveryManager {
             if (!rs.next()) return;
 
             List<ItemStack> items = deserializeItems(rs.getString("items"));
-            items.removeIf(item -> item != null && item.isSimilar(toRemove) && item.getAmount() == toRemove.getAmount());
+            int amountToRemove = toRemove.getAmount();
+
+            Iterator<ItemStack> iterator = items.iterator();
+            while (iterator.hasNext() && amountToRemove > 0) {
+                ItemStack item = iterator.next();
+                if (item != null && item.isSimilar(toRemove)) {
+                    int itemAmount = item.getAmount();
+
+                    if (itemAmount <= amountToRemove) {
+                        amountToRemove -= itemAmount;
+                        iterator.remove();
+                    } else {
+                        item.setAmount(itemAmount - amountToRemove);
+                        amountToRemove = 0;
+                    }
+                }
+            }
 
             if (items.isEmpty()) {
                 try (PreparedStatement deleteStmt = connection.prepareStatement(
                         "DELETE FROM deliveries WHERE id = ?")) {
                     deleteStmt.setInt(1, deliveryId);
                     deleteStmt.executeUpdate();
+                    plugin.getLogger().info("Entrega " + deliveryId + " removida por estar vazia.");
                 }
             } else {
                 updateDelivery(deliveryId, items);
+                plugin.getLogger().info("Item(s) removidos da entrega " + deliveryId);
             }
 
         } catch (Exception e) {
@@ -176,6 +198,7 @@ public class DeliveryManager {
             while (rs.next()) {
                 players.add(rs.getString("player_name"));
             }
+            plugin.getLogger().info("Jogadores com entregas pendentes: " + players.size());
         } catch (SQLException e) {
             plugin.getLogger().log(Level.SEVERE, "Erro ao buscar jogadores com entregas pendentes", e);
         }
@@ -194,6 +217,7 @@ public class DeliveryManager {
                     if (item != null) total += item.getAmount();
                 }
             }
+            plugin.getLogger().info("Contagem de itens para " + playerName + ": " + total + " item(ns)");
         } catch (Exception e) {
             plugin.getLogger().log(Level.SEVERE, "Erro ao contar itens no banco de dados", e);
         }
@@ -230,9 +254,12 @@ public class DeliveryManager {
             }
 
             connection.commit();
+            plugin.getLogger().info("Canceladas " + canceledCount + " entrega(s) de " + targetPlayerName);
+
         } catch (Exception e) {
             try {
                 connection.rollback();
+                plugin.getLogger().warning("Rollback realizado após erro no cancelamento.");
             } catch (SQLException ex) {
                 plugin.getLogger().log(Level.SEVERE, "Erro ao fazer rollback", ex);
             }
@@ -249,16 +276,19 @@ public class DeliveryManager {
 
     public synchronized void close() {
         try {
-            if (connection != null && !connection.isClosed()) connection.close();
+            if (connection != null && !connection.isClosed()) {
+                connection.close();
+                plugin.getLogger().info("Conexão com o banco de dados fechada.");
+            }
         } catch (SQLException e) {
             plugin.getLogger().log(Level.SEVERE, "Erro ao fechar conexão com banco de dados", e);
         }
     }
 
     public static class DeliverySlot {
-        public int id;
-        public String senderName;
-        public List<ItemStack> items;
+        public final int id;
+        public final String senderName;
+        public final List<ItemStack> items;
 
         public DeliverySlot(int id, String senderName, List<ItemStack> items) {
             this.id = id;

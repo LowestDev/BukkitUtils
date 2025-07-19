@@ -9,21 +9,29 @@ import org.bukkit.OfflinePlayer;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
+import org.bukkit.event.EventHandler;
+import org.bukkit.event.Listener;
+import org.bukkit.event.inventory.InventoryCloseEvent;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
-import org.bukkit.plugin.java.JavaPlugin;
+import org.bukkit.plugin.Plugin;
 
 import java.lang.reflect.Method;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 
-public class CorreioCommand extends Command {
+public class CorreioCommand extends Command implements Listener {
 
-    private final JavaPlugin plugin = BukkitUtils.getInstance();
+    private final Plugin plugin = BukkitUtils.getInstance();
     private final DeliveryManager deliveryManager = BukkitUtils.getDeliveryManager();
+
+    // Map to track which correio inventories belong to which sender & target
+    // Key: UUID of player who opened the inventory
+    // Value: DeliverySession containing inventory, target player, sender name
+    private final Map<UUID, DeliverySession> openInventories = new HashMap<>();
 
     public CorreioCommand() {
         super("correio");
+        Bukkit.getPluginManager().registerEvents(this, plugin);
     }
 
     @Override
@@ -49,27 +57,12 @@ public class CorreioCommand extends Command {
             Inventory inv = Bukkit.createInventory(player, 54, ChatColor.GREEN + "Entrega para " + targetName);
             player.openInventory(inv);
 
-            plugin.getServer().getScheduler().runTaskLater(plugin, () -> {
-                if (player.getOpenInventory() == null || !player.getOpenInventory().getTitle().equals(ChatColor.GREEN + "Entrega para " + targetName)) {
-                    return;
-                }
-
-                ItemStack[] contents = inv.getContents();
-                List<ItemStack> validItems = new ArrayList<>();
-                for (ItemStack item : contents) {
-                    if (item != null && item.getType() != org.bukkit.Material.AIR) {
-                        validItems.add(item);
-                    }
-                }
-
-                if (!validItems.isEmpty()) {
-                    deliveryManager.addDelivery(targetName, validItems);
-                    sender.sendMessage(ChatColor.GREEN + "Entrega enviada para " + targetName + ".");
-                }
-            }, 20L * 5);
+            // Track this correio inventory session
+            openInventories.put(player.getUniqueId(), new DeliverySession(inv, targetName.toLowerCase(Locale.ROOT), sender.getName()));
 
             return true;
         } else {
+            // Permission check corrected: Console or players with "correio.console"
             if (!(sender instanceof Player) || sender.hasPermission("correio.console")) {
                 String[] itemRefs = args[1].split(",");
                 List<ItemStack> toSend = new ArrayList<>();
@@ -88,23 +81,50 @@ public class CorreioCommand extends Command {
                 }
 
                 if (!toSend.isEmpty()) {
-                    deliveryManager.addDelivery(targetName, toSend);
+                    deliveryManager.addDelivery(targetName, toSend, sender.getName());
                     sender.sendMessage(ChatColor.GREEN + "Entrega enviada para " + targetName + ".");
                 }
+            } else {
+                sender.sendMessage(ChatColor.RED + "Você não tem permissão para enviar entregas dessa forma.");
             }
             return true;
         }
     }
 
+    @EventHandler
+    public void onInventoryClose(InventoryCloseEvent event) {
+        if (!(event.getPlayer() instanceof Player player)) return;
+        UUID playerId = player.getUniqueId();
+
+        DeliverySession session = openInventories.remove(playerId);
+        if (session == null) return;
+
+        Inventory closedInv = event.getInventory();
+
+        if (!closedInv.equals(session.inventory)) return;
+
+        ItemStack[] contents = closedInv.getContents();
+        List<ItemStack> validItems = new ArrayList<>();
+        for (ItemStack item : contents) {
+            if (item != null && item.getType() != Material.AIR) {
+                validItems.add(item);
+            }
+        }
+
+        if (!validItems.isEmpty()) {
+            deliveryManager.addDelivery(session.targetPlayerName, validItems, session.senderName);
+            player.sendMessage(ChatColor.GREEN + "Entrega enviada para " + session.targetPlayerName + ".");
+        }
+    }
+
     private ItemStack getItemStackFromKey(String key) {
         try {
-            // Try Bukkit first (vanilla)
             Material material = Material.matchMaterial(key);
             if (material != null) {
                 return new ItemStack(material);
             }
 
-            // Then try Mohist's Forge registry via Mojang mappings
+            // NMS reflection to support modded items
             Object minecraftKey = Class.forName("net.minecraft.resources.MinecraftKey")
                     .getConstructor(String.class)
                     .newInstance(key);
@@ -133,26 +153,35 @@ public class CorreioCommand extends Command {
         }
     }
 
+    private static class DeliverySession {
+        final Inventory inventory;
+        final String targetPlayerName;
+        final String senderName;
+
+        DeliverySession(Inventory inventory, String targetPlayerName, String senderName) {
+            this.inventory = inventory;
+            this.targetPlayerName = targetPlayerName;
+            this.senderName = senderName;
+        }
+    }
 
     @Override
     public List<String> tabComplete(CommandSender sender, String alias, String[] args) {
         List<String> completions = new ArrayList<>();
 
         if (args.length == 1) {
-            // Suggest player names
-            String partialName = args[0].toLowerCase();
+            String partialName = args[0].toLowerCase(Locale.ROOT);
             for (OfflinePlayer offlinePlayer : Bukkit.getOfflinePlayers()) {
                 String name = offlinePlayer.getName();
-                if (name != null && name.toLowerCase().startsWith(partialName)) {
+                if (name != null && name.toLowerCase(Locale.ROOT).startsWith(partialName)) {
                     completions.add(name);
                 }
             }
         } else if (args.length == 2) {
             try {
                 String[] current = args[1].split(",");
-                String last = current[current.length - 1].toLowerCase();
+                String last = current[current.length - 1].toLowerCase(Locale.ROOT);
 
-                // Use ForgeRegistries.ITEMS.keySet() to get all item keys
                 Class<?> forgeRegistries = Class.forName("net.minecraftforge.registries.ForgeRegistries");
                 Object itemRegistry = forgeRegistries.getField("ITEMS").get(null);
 
@@ -161,18 +190,16 @@ public class CorreioCommand extends Command {
                 Iterable<Object> keys = (Iterable<Object>) getKeysMethod.invoke(itemRegistry);
 
                 for (Object resourceLocation : keys) {
-                    String keyStr = resourceLocation.toString(); // e.g. "minecraft:stone", "modid:itemname"
-                    if (keyStr.toLowerCase().startsWith(last)) {
+                    String keyStr = resourceLocation.toString();
+                    if (keyStr.toLowerCase(Locale.ROOT).startsWith(last)) {
                         completions.add(keyStr);
                     }
                 }
             } catch (Exception e) {
-                // Fail silently to avoid crashing tab completion
+                // Silent fail to prevent tab completion crashes
             }
         }
 
         return completions;
     }
-
-
 }

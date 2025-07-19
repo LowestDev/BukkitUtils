@@ -24,7 +24,7 @@ public class LixoCommand extends Command {
         super("lixo");
         setDescription("Joga fora no lixo...!");
         setUsage("/lixo");
-        setAliases(Arrays.asList("trash", "garbage"));
+        setAliases(Arrays.asList("trash", "garbage", "lixeira"));
     }
 
     @Override
