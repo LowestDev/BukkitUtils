@@ -11,9 +11,12 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.inventory.InventoryCloseEvent;
+import org.bukkit.event.inventory.InventoryOpenEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.inventory.ItemStack;
 
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -21,6 +24,7 @@ import java.util.concurrent.ConcurrentHashMap;
 public class CorreioListener implements Listener {
 
     private final DeliveryManager deliveryManager = BukkitUtils.getDeliveryManager();
+    public static final ArrayList<Player> hasOpenedDelivery = new ArrayList<Player>();
 
     // Map to track currently opened delivery slot per player
     private final Map<UUID, DeliveryManager.DeliverySlot> openDeliverySlots = new ConcurrentHashMap<>();
@@ -70,6 +74,17 @@ public class CorreioListener implements Listener {
         Bukkit.getScheduler().runTask(BukkitUtils.getInstance(), () -> {
             deliveryManager.removeItemFromDelivery(slot.id, clickedItem);
         });
+    }
+
+    @EventHandler
+    public void onInventoryOpen(InventoryOpenEvent event) {
+            if (event.getView().getTitle().startsWith(ChatColor.GREEN + "Entrega para ")) {
+                if (event.getView().getTitle().contains(event.getPlayer().getName())) {
+                    hasOpenedDelivery.add((Player) event.getPlayer());
+                    deliveryManager.cancelDeliveries(event.getPlayer().getName(), BukkitUtils.getInstance());
+                    hasOpenedDelivery.remove((Player) event.getPlayer());
+                }
+            }
     }
 
     @EventHandler

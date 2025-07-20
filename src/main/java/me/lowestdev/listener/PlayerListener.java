@@ -13,6 +13,7 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.inventory.InventoryCloseEvent;
+import org.bukkit.event.player.AsyncPlayerChatEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.inventory.Inventory;
@@ -35,6 +36,10 @@ public class PlayerListener implements Listener {
         }
         if (quebraTudo.contains(event.getPlayer())) {
             quebraTudo.remove(event.getPlayer());
+        }
+
+        if (CorreioListener.hasOpenedDelivery.contains(event.getPlayer())) {
+            CorreioListener.hasOpenedDelivery.remove(event.getPlayer());
         }
     }
 

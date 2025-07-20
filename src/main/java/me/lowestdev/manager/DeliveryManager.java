@@ -245,10 +245,6 @@ public class DeliveryManager {
                         deleteStmt.executeUpdate();
                     }
 
-                    if (!"CONSOLE".equalsIgnoreCase(sender)) {
-                        addDelivery(sender, items, "CONSOLE");
-                    }
-
                     canceledCount++;
                 }
             }
