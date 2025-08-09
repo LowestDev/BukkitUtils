@@ -18,27 +18,28 @@ import java.util.UUID;
 
 public class LixoCommand extends Command {
 
-    public static final Set<UUID> openTrash = new HashSet<>();
+	public static final Set<UUID> openTrash = new HashSet<>();
 
-    public LixoCommand() {
-        super("lixo");
-        setDescription("Joga fora no lixo...!");
-        setUsage("/lixo");
-        setAliases(Arrays.asList("trash", "garbage", "lixeira"));
-    }
+	public LixoCommand() {
+		super("lixo");
+		setDescription("Joga fora no lixo...!");
+		setUsage("/lixo");
+		setAliases(Arrays.asList("trash", "garbage", "lixeira"));
+	}
 
-    @Override
-    public boolean execute(@NotNull CommandSender sender, @NotNull String commandLabel, @NotNull String[] args) {
-        if (!(sender instanceof Player)) {
-            sender.sendMessage(ChatColor.RED + "Only players can use this command.");
-            return false;
-        }
-        Player player = (Player) sender;
-        Inventory trash = Bukkit.createInventory(player, 27, ChatColor.RED + "Lixeira");
-        openTrash.add(player.getUniqueId());
-        player.openInventory(trash);
-        player.sendMessage(ChatColor.GRAY + "Você abriu a lata de lixo, os itens que deixar aí dentro serão destruídos quando você fechá-la.");
-        return true;
-    }
+	@Override
+	public boolean execute(@NotNull CommandSender sender, @NotNull String commandLabel, @NotNull String[] args) {
+		if (!(sender instanceof Player)) {
+			sender.sendMessage(ChatColor.RED + "Only players can use this command.");
+			return false;
+		}
+		Player player = (Player) sender;
+		Inventory trash = Bukkit.createInventory(player, 27, ChatColor.RED + "Lixeira");
+		openTrash.add(player.getUniqueId());
+		player.openInventory(trash);
+		player.sendMessage(ChatColor.GRAY
+				+ "Você abriu a lata de lixo, os itens que deixar aí dentro serão destruídos quando você fechá-la.");
+		return true;
+	}
 
 }
