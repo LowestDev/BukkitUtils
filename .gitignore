@@ -29,6 +29,7 @@ target/
 /nbdist/
 /.nb-gradle/
 build/
+work/
 !**/src/main/**/build/
 !**/src/test/**/build/
 
@@ -59,8 +60,19 @@ build/
 *.zip
 *.tar.gz
 *.rar
+*.exe
+
 
 # virtual machine crash logs, see http://www.java.com/en/download/help/error_hotspot.xml
 hs_err_pid*
 replay_pid*
 >>>>>>> 1f39dc8386bb9064e657a6f4071751475434049b
+
+# Other entries
+
+/PortableGit-2.45.2-64-bit
+/apache-maven-3.9.6
+/BuildData
+/Bukkit
+/CraftBukkit
+/Spigot
