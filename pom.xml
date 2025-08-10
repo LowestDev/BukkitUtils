@@ -5,7 +5,7 @@
 
     <groupId>me.lowestdev</groupId>
     <artifactId>BukkitUtils</artifactId>
-    <version>1.4</version>
+    <version>1.0</version>
 
     <properties>
         <BukkitUtils-version>>1.4</BukkitUtils-version>

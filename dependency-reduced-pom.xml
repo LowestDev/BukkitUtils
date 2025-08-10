@@ -3,7 +3,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>me.lowestdev</groupId>
   <artifactId>BukkitUtils</artifactId>
-  <version>1.4</version>
+  <version>1.0</version>
   <build>
     <resources>
       <resource>

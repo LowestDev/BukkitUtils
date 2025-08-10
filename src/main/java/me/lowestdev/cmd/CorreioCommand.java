@@ -31,6 +31,7 @@ public class CorreioCommand extends Command implements Listener {
 		Bukkit.getPluginManager().registerEvents(this, plugin);
 	}
 
+	@SuppressWarnings("deprecation")
 	@Override
 	public boolean execute(CommandSender sender, String label, String[] args) {
 		if (args.length == 0 || args.length > 1) {
@@ -92,6 +93,7 @@ public class CorreioCommand extends Command implements Listener {
 		}
 	}
 
+	@SuppressWarnings("unused")
 	private ItemStack getItemStackFromKey(String key) {
 		try {
 			Material material = Material.matchMaterial(key);

@@ -18,6 +18,7 @@ public class ListarEntregasCommand extends Command {
 		super("listareentregas");
 	}
 
+	@SuppressWarnings("deprecation")
 	@Override
 	public boolean execute(CommandSender sender, String label, String[] args) {
 		if (!sender.hasPermission("correio.listar")) {
