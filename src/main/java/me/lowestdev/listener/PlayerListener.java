@@ -14,12 +14,15 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.inventory.InventoryCloseEvent;
+import org.bukkit.event.player.PlayerLoginEvent;
+import org.bukkit.event.player.PlayerLoginEvent.Result;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.event.server.ServerListPingEvent;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 
 import me.lowestdev.BukkitUtils;
+import me.lowestdev.cmd.MaintenanceCommand;
 
 public class PlayerListener implements Listener {
 
@@ -58,7 +61,7 @@ public class PlayerListener implements Listener {
 		if (CorreioListener.hasOpenedDelivery.contains(event.getPlayer())) {
 			CorreioListener.hasOpenedDelivery.remove(event.getPlayer());
 		}
-		
+
 	}
 
 	// Keywords to identify logs and axes
@@ -138,5 +141,15 @@ public class PlayerListener implements Listener {
 			inventory.setItem(i, null);
 		}
 		player.sendMessage(ChatColor.RED + "Os itens inseridos na sua lixeira foram destruídos!");
+	}
+
+	@EventHandler
+	public void onLogin(PlayerLoginEvent event) {
+		boolean isMaintenance = BukkitUtils.getInstance().getConfig().getBoolean("maintenance");
+		if (!isMaintenance) {
+			return;}
+		if (event.getPlayer().hasPermission("utils.maintenance") || event.getPlayer().isOp()) {
+			return;}
+		event.disallow(PlayerLoginEvent.Result.KICK_OTHER, "§cO servidor está em modo de manutenção!\n§eTente novamente mais tarde.");
 	}
 }

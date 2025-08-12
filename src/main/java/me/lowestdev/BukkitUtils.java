@@ -20,6 +20,7 @@ import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.SimplePluginManager;
 import org.bukkit.plugin.java.JavaPlugin;
 
+import me.lowestdev.discord.DiscordMaintenanceCommand;
 import me.lowestdev.discord.DiscordRestartCommand;
 import me.lowestdev.discord.DiscordWhitelistCommand;
 import me.lowestdev.listener.CorreioListener;
@@ -169,11 +170,13 @@ public class BukkitUtils extends JavaPlugin {
 					.addCommands(Commands.slash("whitelist", "Gerencia a whitelist")
 							.addOption(OptionType.STRING, "ação", "add, remove ou list", true)
 							.addOption(OptionType.STRING, "nick", "Nick do jogador (não necessário para list)", false),
-							Commands.slash("restart", "Reinicia o servidor Minecraft"))
+							Commands.slash("restart", "Reinicia o servidor Minecraft"),
+							Commands.slash("maintenance", "Ativa o modo de manutenção do servidor"))
 					.queue();
 
 			jda.addEventListener(new DiscordRestartCommand());
 			jda.addEventListener(new DiscordWhitelistCommand());
+			jda.addEventListener(new DiscordMaintenanceCommand());
 		}
 	}
 
@@ -260,6 +263,11 @@ public class BukkitUtils extends JavaPlugin {
 
 		if (!config.isSet("privacy-filter")) {
 			config.set("privacy-filter", Boolean.valueOf(false));
+			changed = true;
+		}
+		
+		if (!config.isSet("maintenance")) {
+			config.set("maintenance", Boolean.valueOf(false));
 			changed = true;
 		}
 
@@ -398,6 +406,10 @@ public class BukkitUtils extends JavaPlugin {
 
 	public static ConfigManager getConfigManager() {
 		return configManager;
+	}
+	
+	public static DiscordManager getDiscordManager() {
+		return discordManager;
 	}
 
 }

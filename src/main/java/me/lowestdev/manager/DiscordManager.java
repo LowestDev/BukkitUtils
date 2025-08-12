@@ -8,6 +8,7 @@ import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 
 import me.lowestdev.BukkitUtils;
+import me.lowestdev.cmd.MaintenanceCommand;
 import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.JDABuilder;
@@ -70,7 +71,7 @@ public class DiscordManager {
 				sendInitialMessage();
 			}
 			jda.getPresence().setStatus(OnlineStatus.DO_NOT_DISTURB);
-			
+
 			Bukkit.getScheduler().runTaskTimerAsynchronously(plugin, this::updateStatus, 0L, 20L * 60);
 
 		} catch (Exception e) {
@@ -99,23 +100,33 @@ public class DiscordManager {
 		EmbedBuilder eb = new EmbedBuilder();
 		if (!online) {
 			eb.setTitle("Status do servidor :(");
+		} else if (online && (!(BukkitUtils.getInstance().getConfig().getBoolean("maintenance")))) {
+			eb.setTitle("Status do servidor :)");
+		}
+
+		if (BukkitUtils.getInstance().getConfig().getBoolean("maintenance") && online) {
+			eb.setColor(Color.YELLOW);
+			eb.setTitle("Status do servidor ⚠️");
+			eb.setDescription("🔴 Servidor em manutenção!");
+			eb.setTimestamp(Instant.now());
+			return eb.build();
 		} else {
-		eb.setTitle("Status do servidor :)");
-		}
-		eb.setColor(online ? Color.GREEN : Color.RED);
-		eb.setDescription(online ? "🟢 Servidor online!" : "🔴 Servidor offline...");
-		if (config.isMapEnabled()) {
-			eb.addField("Mapa do servidor", "[Clique aqui](" + config.getMapLink() + ")", false);
-		}
-		eb.addField("Players Online", String.valueOf(Bukkit.getOnlinePlayers().size()), true);
 
-		String players = Bukkit.getOnlinePlayers().stream().map(Player::getName).collect(Collectors.joining(", "));
-		if (players.isEmpty())
-			players = "Sem jogadores online...";
+			eb.setColor(online ? Color.GREEN : Color.RED);
+			eb.setDescription(online ? "🟢 Servidor online!" : "🔴 Servidor offline...");
+			if (config.isMapEnabled()) {
+				eb.addField("Mapa do servidor", "[Clique aqui](" + config.getMapLink() + ")", false);
+			}
+			eb.addField("Players Online", String.valueOf(Bukkit.getOnlinePlayers().size()), true);
 
-		eb.addField("Lista de jogadores: ", players, false);
-		eb.setTimestamp(Instant.now());
-		return eb.build();
+			String players = Bukkit.getOnlinePlayers().stream().map(Player::getName).collect(Collectors.joining(", "));
+			if (players.isEmpty())
+				players = "Sem jogadores online...";
+
+			eb.addField("Lista de jogadores: ", players, false);
+			eb.setTimestamp(Instant.now());
+			return eb.build();
+		}
 	}
 
 	public void shutdown(boolean offlineNotice) {
