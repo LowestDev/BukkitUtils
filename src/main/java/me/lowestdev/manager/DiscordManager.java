@@ -8,7 +8,6 @@ import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 
 import me.lowestdev.BukkitUtils;
-import me.lowestdev.cmd.MaintenanceCommand;
 import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.JDABuilder;
@@ -106,8 +105,8 @@ public class DiscordManager {
 
 		if (BukkitUtils.getInstance().getConfig().getBoolean("maintenance") && online) {
 			eb.setColor(Color.YELLOW);
-			eb.setTitle("Status do servidor ⚠️");
-			eb.setDescription("🔴 Servidor em manutenção!");
+			eb.setTitle("Status do servidor:");
+			eb.setDescription("Servidor em manutenção! ⚠️");
 			eb.setTimestamp(Instant.now());
 			return eb.build();
 		} else {

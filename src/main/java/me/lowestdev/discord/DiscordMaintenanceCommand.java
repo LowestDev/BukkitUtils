@@ -35,7 +35,7 @@ public class DiscordMaintenanceCommand extends ListenerAdapter {
                 ? "🔴 **Modo de manutenção ativado!**\nJogadores sem permissão não poderão entrar."
                 : "🟢 **Modo de manutenção desativado!**\nO servidor está aberto para todos.";
 
-        event.reply(status).setEphemeral(false).queue();
+        event.reply(status).setEphemeral(true).queue();
 
         if (newValue) {
             Bukkit.getScheduler().runTask(BukkitUtils.getInstance(), () -> {

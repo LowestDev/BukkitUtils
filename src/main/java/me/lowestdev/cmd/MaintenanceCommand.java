@@ -4,7 +4,6 @@ import java.util.Arrays;
 
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
-import org.bukkit.command.ConsoleCommandSender;
 
 import me.lowestdev.BukkitUtils;
 import net.md_5.bungee.api.ChatColor;
@@ -20,10 +19,6 @@ public class MaintenanceCommand extends Command {
 
     @Override
     public boolean execute(CommandSender sender, String commandLabel, String[] args) {
-        if (!(sender instanceof ConsoleCommandSender)) {
-            sender.sendMessage(ChatColor.RED + "Este comando só pode ser executado pelo console!");
-            return true;
-        }
 
         boolean isMaintenance = BukkitUtils.getInstance().getConfig().getBoolean("maintenance");
         boolean newValue = !isMaintenance;
