@@ -14,6 +14,11 @@ public class ConfigManager {
 	private File dataFile;
 	private File twitchFile;
 	private FileConfiguration twitch;
+	private File dbFile;
+	private FileConfiguration db;
+	private File discordFile;
+	private FileConfiguration discord;
+	
 
 	public ConfigManager(BukkitUtils plugin) {
 		this.plugin = plugin;
@@ -40,6 +45,26 @@ public class ConfigManager {
 			}
 		}
 		twitch = (YamlConfiguration.loadConfiguration(twitchFile));
+		
+		discordFile = new File(plugin.getDataFolder(), "discord.yml");
+		if (!discordFile.exists()) {
+			try {
+				discordFile.createNewFile();
+			} catch (IOException e) {
+				plugin.getLogger().severe("Could not create discord.yml: " + e.getMessage());
+			}
+		}
+		discord = (YamlConfiguration.loadConfiguration(discordFile));
+		
+		dbFile = new File(plugin.getDataFolder(), "db.yml");
+		if (!dbFile.exists()) {
+			try {
+				dbFile.createNewFile();
+			} catch (IOException e) {
+				plugin.getLogger().severe("Could not create db.yml: " + e.getMessage());
+			}
+		}
+		db = (YamlConfiguration.loadConfiguration(dbFile));
 	}
 
 	public void reload() {
@@ -48,15 +73,15 @@ public class ConfigManager {
 	}
 
 	public String getBotToken() {
-		return plugin.getConfig().getString("discord.token");
+		return discord.getString("discord.token");
 	}
 
 	public String getGuildId() {
-		return plugin.getConfig().getString("discord.guild-id");
+		return discord.getString("discord.guild-id");
 	}
 
 	public String getChannelId() {
-		return plugin.getConfig().getString("discord.channel-id");
+		return discord.getString("discord.channel-id");
 	}
 
 	public String getMapLink() {
@@ -68,7 +93,7 @@ public class ConfigManager {
 	}
 	
 	public Boolean isPrivacyEnabled() {
-		return plugin.getConfig().getBoolean("privacy-filter");
+		return plugin.getConfig().getBoolean("privacy");
 	}
 
 	public long getStatusMessageId() {
@@ -91,4 +116,45 @@ public class ConfigManager {
 	public FileConfiguration getTwitchConfiguration() {
 		return twitch;
 	}
+
+	public File getDbFile() {
+		return dbFile;
+	}
+
+	public FileConfiguration getDb() {
+		return db;
+	}
+
+	public FileConfiguration getDiscord() {
+		return discord;
+	}
+
+	public File getDiscordFile() {
+		return discordFile;
+	}
+	
+	public void saveDbConfig() {
+	    try {
+	        db.save(dbFile);
+	    } catch (IOException e) {
+	        e.printStackTrace();
+	    }
+	}
+
+	public void saveTwitchConfig() {
+	    try {
+	        twitch.save(twitchFile);
+	    } catch (IOException e) {
+	        e.printStackTrace();
+	    }
+	}
+
+	public void saveDiscordConfig() {
+	    try {
+	        discord.save(discordFile);
+	    } catch (IOException e) {
+	        e.printStackTrace();
+	    }
+	}
+
 }

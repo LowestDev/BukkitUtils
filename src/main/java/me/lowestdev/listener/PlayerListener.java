@@ -14,15 +14,16 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.inventory.InventoryCloseEvent;
+import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerLoginEvent;
-import org.bukkit.event.player.PlayerLoginEvent.Result;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.event.server.ServerListPingEvent;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 
 import me.lowestdev.BukkitUtils;
-import me.lowestdev.cmd.MaintenanceCommand;
+import net.md_5.bungee.api.chat.ClickEvent;
+import net.md_5.bungee.api.chat.TextComponent;
 
 public class PlayerListener implements Listener {
 
@@ -43,6 +44,41 @@ public class PlayerListener implements Listener {
 			}
 		}
 
+	}
+	
+	@EventHandler
+	public void onPlayerJoin(PlayerJoinEvent event) {
+		Player player = event.getPlayer();
+
+		if (BukkitUtils.discordManager != null) {
+			BukkitUtils.discordManager.updateStatus();
+		}
+
+		if (!CorreioListener.deliveryManager.hasDelivery(player.getName())) {
+
+			event.setJoinMessage("§8[§a+§8]§f " + player.getName());
+
+		}
+
+		if (PlayerListener.quebraTudo.contains(player)) {
+			PlayerListener.quebraTudo.remove(player);
+		}
+
+		if (CorreioListener.deliveryManager.hasDelivery(player.getName())) {
+			event.setJoinMessage(null);
+			player.sendMessage(ChatColor.YELLOW + "Você tem uma nova entrega!\n" + ChatColor.RED + ChatColor.UNDERLINE
+					+ "Lembre-se de liberar espaço no seu inventário para receber seus itens!\n");
+			TextComponent message = new TextComponent(ChatColor.GREEN + "[Clique aqui para abrir sua entrega]");
+			message.setClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/abrircorreio"));
+			player.spigot().sendMessage(message);
+
+			for (Player online : Bukkit.getOnlinePlayers()) {
+				if (online.getPlayer() != player) {
+					online.sendMessage("§8[§a+§8]§f " + player.getName());
+				}
+			}
+
+		}
 	}
 
 	@EventHandler

@@ -45,8 +45,11 @@ public class QuebratudoCommand extends Command {
 
 					@Override
 					public void run() {
-						PlayerListener.quebraTudo.remove(player);
-						player.sendMessage(ChatColor.RED + "Você parou de quebrar tudo... boa sorte lá fora.");
+						
+						if (PlayerListener.quebraTudo.contains(player)) {
+							PlayerListener.quebraTudo.remove(player);
+							player.sendMessage(ChatColor.RED + "Você parou de quebrar tudo... boa sorte lá fora.");
+						}
 					}
 				}.runTaskLater(BukkitUtils.getInstance(), 6000);
 

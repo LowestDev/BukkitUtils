@@ -21,7 +21,7 @@ public class DiscordWhitelistCommand extends ListenerAdapter {
 			return;
 
 		String userId = event.getUser().getId();
-		List<String> allowed = BukkitUtils.getInstance().getConfig().getStringList("discord.admins");
+		List<String> allowed = BukkitUtils.getConfigManager().getDiscord().getStringList("discord.admins");
 
 		if (!allowed.contains(userId)) {
 			event.reply("❌ Você não tem permissão para isso.").setEphemeral(true).queue();

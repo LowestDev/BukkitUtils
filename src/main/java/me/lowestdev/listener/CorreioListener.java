@@ -13,17 +13,14 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.inventory.InventoryCloseEvent;
 import org.bukkit.event.inventory.InventoryOpenEvent;
-import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.inventory.ItemStack;
 
 import me.lowestdev.BukkitUtils;
 import me.lowestdev.manager.DeliveryManager;
-import net.md_5.bungee.api.chat.ClickEvent;
-import net.md_5.bungee.api.chat.TextComponent;
 
 public class CorreioListener implements Listener {
 
-	private final DeliveryManager deliveryManager = BukkitUtils.getDeliveryManager();
+	public final static DeliveryManager deliveryManager = BukkitUtils.getDeliveryManager();
 	public static final ArrayList<Player> hasOpenedDelivery = new ArrayList<Player>();
 
 	private final Map<UUID, DeliveryManager.DeliverySlot> openDeliverySlots = new ConcurrentHashMap<>();
@@ -35,42 +32,7 @@ public class CorreioListener implements Listener {
 	public void clearOpenDeliverySlot(Player player) {
 		openDeliverySlots.remove(player.getUniqueId());
 	}
-
-	@EventHandler
-	public void onPlayerJoin(PlayerJoinEvent event) {
-		Player player = event.getPlayer();
-
-		if (BukkitUtils.discordManager != null) {
-			BukkitUtils.discordManager.updateStatus();
-		}
-
-		if (!deliveryManager.hasDelivery(player.getName())) {
-
-			event.setJoinMessage("§8[§a+§8]§f " + player.getName());
-
-		}
-
-		if (PlayerListener.quebraTudo.contains(player)) {
-			PlayerListener.quebraTudo.remove(player);
-		}
-
-		if (deliveryManager.hasDelivery(player.getName())) {
-			event.setJoinMessage(null);
-			player.sendMessage(ChatColor.YELLOW + "Você tem uma nova entrega!\n" + ChatColor.RED + ChatColor.UNDERLINE
-					+ "Lembre-se de liberar espaço no seu inventário para receber seus itens!\n");
-			TextComponent message = new TextComponent(ChatColor.GREEN + "[Clique aqui para abrir sua entrega]");
-			message.setClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/abrircorreio"));
-			player.spigot().sendMessage(message);
-
-			for (Player online : Bukkit.getOnlinePlayers()) {
-				if (online.getPlayer() != player) {
-					online.sendMessage("§8[§a+§8]§f " + player.getName());
-				}
-			}
-
-		}
-	}
-
+	
 	@EventHandler
 	public void onInventoryClick(InventoryClickEvent event) {
 		if (!(event.getWhoClicked() instanceof Player player))
@@ -84,7 +46,6 @@ public class CorreioListener implements Listener {
 		if (clickedItem == null || clickedItem.getType().isAir())
 			return;
 
-		// Remove the item from DB (will also auto-remove the delivery if empty)
 		Bukkit.getScheduler().runTask(BukkitUtils.getInstance(), () -> {
 			deliveryManager.removeItemFromDelivery(slot.id, clickedItem);
 		});

@@ -118,11 +118,14 @@ public class DiscordManager {
 			}
 			eb.addField("Players Online", String.valueOf(Bukkit.getOnlinePlayers().size()), true);
 
-			String players = Bukkit.getOnlinePlayers().stream().map(Player::getName).collect(Collectors.joining(", "));
-			if (players.isEmpty())
-				players = "Sem jogadores online...";
+			if (!BukkitUtils.getInstance().getConfig().getBoolean("privacy")) {
+				String players = Bukkit.getOnlinePlayers().stream().map(Player::getName)
+						.collect(Collectors.joining(", "));
+				if (players.isEmpty())
+					players = "Sem jogadores online...";
 
-			eb.addField("Lista de jogadores: ", players, false);
+				eb.addField("Lista de jogadores: ", players, false);
+			}
 			eb.setTimestamp(Instant.now());
 			return eb.build();
 		}

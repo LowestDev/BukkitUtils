@@ -30,6 +30,7 @@ import me.lowestdev.manager.DeliveryManager;
 import me.lowestdev.manager.DiscordManager;
 import me.lowestdev.models.ClassGetter;
 import me.lowestdev.twitch.TwitchStatusUpdater;
+import me.lowestdev.utils.MotdUtils;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.interactions.commands.OptionType;
@@ -66,14 +67,18 @@ public class BukkitUtils extends JavaPlugin {
 		createDefaultConfig("config.yml");
 		createDefaultConfig("data.yml");
 		createDefaultConfig("twitch.yml");
+		createDefaultConfig("discord.yml");
+		createDefaultConfig("db.yml");
 
 		configManager = new ConfigManager(this);
 		setupConfigDefaults();
 		saveConfig();
-		
+
 		// Initialize DeliveryManager (SQLite)
 		try {
-			new File(getDataFolder(), "deliveries.db");
+			if (!getConfigManager().getDb().getBoolean("mysql.enabled")) {
+				new File(getInstance().getDataFolder(), "deliveries.db");
+			}
 			deliveryManager = new DeliveryManager();
 			getLogger().info(PL_PREFIX + "DeliveryManager iniciado com sucesso.");
 		} catch (Exception e) {
@@ -82,10 +87,10 @@ public class BukkitUtils extends JavaPlugin {
 		}
 
 		// Setting up Discord
-		boolean discordEnabled = getConfig().getBoolean("discord.enabled", false);
-		String token = getConfig().getString("discord.token", "");
-		getConfig().getString("discord.channel-id", "");
-		getConfig().getString("discord.guild-id", "");
+		boolean discordEnabled = getConfigManager().getDiscord().getBoolean("discord.enabled", false);
+		String token = getConfigManager().getDiscord().getString("discord.token");
+		getConfigManager().getDiscord().getString("discord.channel-id");
+		getConfigManager().getDiscord().getString("discord.guild-id");
 
 		if (discordEnabled) {
 			if (token == null || token.isEmpty()) {
@@ -103,7 +108,7 @@ public class BukkitUtils extends JavaPlugin {
 
 		// Setup the listener for the item deliveries
 		correioListener = new CorreioListener();
-		
+
 		// Adding custom recipes
 		addLeadRecipe();
 		addSaddleRecipe();
@@ -122,20 +127,26 @@ public class BukkitUtils extends JavaPlugin {
 		getLogger().info(PL_PREFIX + "Comandos registrados com sucesso!");
 
 		// Checking for Twitch integration
-		if (getConfig().getBoolean("discord.enabled") && getConfig().getBoolean("twitch.enabled")) {
+		if (getConfigManager().getDiscord().getBoolean("discord.enabled") && getConfigManager().getTwitchConfiguration().getBoolean("twitch.enabled")) {
 			FileConfiguration twitchConfig = getConfigManager().getTwitchConfiguration();
 			String clientId = twitchConfig.getString("twitch.client_id");
 			String clientSecret = twitchConfig.getString("twitch.client_secret");
 			List<String> channels = twitchConfig.getStringList("twitch.channels");
 			Bukkit.getLogger().info(ChatColor.BOLD + "§aIntegração com a §5Twitch §ainiciada com sucesso.");
-		    JDA jda = discordManager.getJda(); // or your own reference
-		    TwitchStatusUpdater updater = new TwitchStatusUpdater(jda, clientId, clientSecret, channels);
-		    updater.start();
+			JDA jda = discordManager.getJda(); // or your own reference
+			TwitchStatusUpdater updater = new TwitchStatusUpdater(jda, clientId, clientSecret, channels);
+			updater.start();
 		} else {
 			Bukkit.getLogger().info(ChatColor.BOLD + "§cIntegração com a §5Twitch §cnão foi iniciada");
 		}
-		
+		if (getConfig().getString("motd.common").length() > 0 || getConfig().getString("motd.maintenance").length() > 0) {
+			if (!getConfig().getBoolean("maintenance")) {
+			Bukkit.getServer().setMotd(MotdUtils.centerMotd(getConfig().getString("motd.common").replace("&", "§")));
+		} else Bukkit.getServer().setMotd(MotdUtils.centerMotd(getConfig().getString("motd.maintenance").replace("&", "§")));
+	} else {
+		Bukkit.getServer().setMotd(Bukkit.getServer().getMotd());
 	}
+}
 
 	@Override
 	public void onDisable() {
@@ -191,8 +202,7 @@ public class BukkitUtils extends JavaPlugin {
 
 		Bukkit.addRecipe(recipe);
 	}
-	
-	
+
 	private void addGoldenAppleRecipe() {
 		ItemStack godapple = new ItemStack(Material.ENCHANTED_GOLDEN_APPLE);
 		NamespacedKey key = new NamespacedKey(this, "custom_gapple");
@@ -204,7 +214,7 @@ public class BukkitUtils extends JavaPlugin {
 
 		Bukkit.addRecipe(recipe);
 	}
-	
+
 	private void addLeadRecipe() {
 		ItemStack lead = new ItemStack(Material.LEAD);
 		NamespacedKey key = new NamespacedKey(this, "custom_lead");
@@ -258,53 +268,65 @@ public class BukkitUtils extends JavaPlugin {
 
 	private void setupConfigDefaults() {
 		FileConfiguration config = getConfig();
-		boolean changed = false;
 		FileConfiguration twitch = getConfigManager().getTwitchConfiguration();
+		FileConfiguration db = getConfigManager().getDb();
+		FileConfiguration discord = getConfigManager().getDiscord();
+		boolean changed = false;
 
-		if (!config.isSet("privacy-filter")) {
-			config.set("privacy-filter", Boolean.valueOf(false));
+		if (!db.isSet("mysql.enabled")) {
+			db.set("mysql.enabled", false);
 			changed = true;
 		}
-		
+		if (!db.isSet("mysql.host")) {
+			db.set("mysql.host", "");
+			changed = true;
+		}
+		if (!db.isSet("mysql.port")) {
+			db.set("mysql.port", "3306");
+			changed = true;
+		}
+		if (!db.isSet("mysql.database")) {
+			db.set("mysql.database", "bukkitutils");
+			changed = true;
+		}
+		if (!db.isSet("mysql.user")) {
+			db.set("mysql.user", "root");
+			changed = true;
+		}
+		if (!db.isSet("mysql.password")) {
+			db.set("mysql.password", "");
+			changed = true;
+		}
+
+		if (!config.isSet("privacy")) {
+			config.set("privacy", false);
+			changed = true;
+		}
 		if (!config.isSet("maintenance")) {
-			config.set("maintenance", Boolean.valueOf(false));
+			config.set("maintenance", false);
 			changed = true;
 		}
-
+		if (!config.isSet("motd.common")) {
+			config.set("motd.common", "");
+			changed = true;
+		}
+		if (!config.isSet("motd.maintenance")) {
+			config.set("motd.maintenance", "");
+			changed = true;
+		}
 		if (!config.isSet("map.enabled")) {
-			config.set("map.enabled", Boolean.valueOf(false));
+			config.set("map.enabled", false);
 			changed = true;
 		}
 		if (!config.isSet("map.url")) {
 			config.set("map.url", "");
 			changed = true;
 		}
-		if (!config.isSet("twitch.enabled")) {
-			config.set("twitch.enabled", Boolean.valueOf(false));
-			changed = true;
-		}
-		if (!config.isSet("discord.enabled")) {
-			config.set("discord.enabled", Boolean.valueOf(false));
-			changed = true;
-		}
-		if (!config.isSet("discord.token")) {
-			config.set("discord.token", "");
-			changed = true;
-		}
-		if (!config.isSet("discord.channel-id")) {
-			config.set("discord.channel-id", "");
-			changed = true;
-		}
-		if (!config.isSet("discord.guild-id")) {
-			config.set("discord.guild-id", "");
-			changed = true;
-		}
 
-		if (!config.isSet("discord.admins")) {
-			config.set("discord.admins", new ArrayList<String>());
+		if (!twitch.isSet("twitch.enabled")) {
+			twitch.set("twitch.enabled", false);
 			changed = true;
 		}
-
 		if (!twitch.isSet("twitch.client_id")) {
 			twitch.set("twitch.client_id", "");
 			changed = true;
@@ -313,14 +335,41 @@ public class BukkitUtils extends JavaPlugin {
 			twitch.set("twitch.client_secret", "");
 			changed = true;
 		}
-
 		if (!twitch.isSet("twitch.channels")) {
 			twitch.set("twitch.channels", new ArrayList<String>());
 			changed = true;
 		}
 
-		if (changed) {
-			saveConfig();
+		if (!discord.isSet("discord.enabled")) {
+			discord.set("discord.enabled", false);
+			changed = true;
+		}
+		if (!discord.isSet("discord.token")) {
+			discord.set("discord.token", "");
+			changed = true;
+		}
+		if (!discord.isSet("discord.channel-id")) {
+			discord.set("discord.channel-id", "");
+			changed = true;
+		}
+		if (!discord.isSet("discord.guild-id")) {
+			discord.set("discord.guild-id", "");
+			changed = true;
+		}
+		if (!discord.isSet("discord.admins")) {
+			discord.set("discord.admins", new ArrayList<String>());
+			changed = true;
+		}
+
+		try {
+			if (changed) {
+				saveConfig();
+				getConfigManager().saveTwitchConfig();
+				getConfigManager().saveDbConfig();
+				getConfigManager().saveDiscordConfig();
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
 		}
 	}
 
@@ -407,7 +456,7 @@ public class BukkitUtils extends JavaPlugin {
 	public static ConfigManager getConfigManager() {
 		return configManager;
 	}
-	
+
 	public static DiscordManager getDiscordManager() {
 		return discordManager;
 	}
