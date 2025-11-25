@@ -15,7 +15,6 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.inventory.InventoryCloseEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
-import org.bukkit.event.player.PlayerLoginEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.event.server.ServerListPingEvent;
 import org.bukkit.inventory.Inventory;
@@ -31,21 +30,17 @@ public class PlayerListener implements Listener {
 
 	@EventHandler
 	public void onServerPing(ServerListPingEvent event) {
-
-		// Check if the filter is enabled in the config file
 		if (BukkitUtils.getConfigManager().isPrivacyEnabled()) {
 			int realPlayers = Bukkit.getServer().getOnlinePlayers().size();
-			int fakeDisplayCount = Math.min(realPlayers, 10); // Show up to 10 fake names
+			int fakeDisplayCount = Math.min(realPlayers, 10);
 
-			// Fake names: Player1, Player2, ..., PlayerX
 			String[] fakeNames = new String[fakeDisplayCount];
 			for (int i = 0; i < fakeDisplayCount; i++) {
 				fakeNames[i] = "Player" + (i + 1);
 			}
 		}
-
 	}
-	
+
 	@EventHandler
 	public void onPlayerJoin(PlayerJoinEvent event) {
 		Player player = event.getPlayer();
@@ -55,9 +50,7 @@ public class PlayerListener implements Listener {
 		}
 
 		if (!CorreioListener.deliveryManager.hasDelivery(player.getName())) {
-
 			event.setJoinMessage("§8[§a+§8]§f " + player.getName());
-
 		}
 
 		if (PlayerListener.quebraTudo.contains(player)) {
@@ -77,13 +70,11 @@ public class PlayerListener implements Listener {
 					online.sendMessage("§8[§a+§8]§f " + player.getName());
 				}
 			}
-
 		}
 	}
 
 	@EventHandler
 	public void onPlayerQuit(PlayerQuitEvent event) {
-
 		event.setQuitMessage("§8[§c-§8]§f " + event.getPlayer().getName());
 
 		if (BukkitUtils.discordManager != null) {
@@ -97,10 +88,8 @@ public class PlayerListener implements Listener {
 		if (CorreioListener.hasOpenedDelivery.contains(event.getPlayer())) {
 			CorreioListener.hasOpenedDelivery.remove(event.getPlayer());
 		}
-
 	}
 
-	// Keywords to identify logs and axes
 	private final String[] logKeywords = { "LOG", "BAMBOO", "STEM" };
 	private final String[] axeKeywords = { "AXE" };
 
@@ -142,7 +131,6 @@ public class PlayerListener implements Listener {
 				}
 			}
 
-			// Break all connected logs
 			for (Block log : toBreak) {
 				log.breakNaturally(tool);
 			}
@@ -180,12 +168,15 @@ public class PlayerListener implements Listener {
 	}
 
 	@EventHandler
-	public void onLogin(PlayerLoginEvent event) {
+	public void onLogin(org.bukkit.event.player.PlayerLoginEvent event) {
 		boolean isMaintenance = BukkitUtils.getInstance().getConfig().getBoolean("maintenance");
 		if (!isMaintenance) {
-			return;}
+			return;
+		}
 		if (event.getPlayer().hasPermission("utils.maintenance") || event.getPlayer().isOp()) {
-			return;}
-		event.disallow(PlayerLoginEvent.Result.KICK_OTHER, "§cO servidor está em modo de manutenção!\n§eTente novamente mais tarde.");
+			return;
+		}
+		event.disallow(org.bukkit.event.player.PlayerLoginEvent.Result.KICK_OTHER,
+				"§cO servidor está em modo de manutenção!\n§eTente novamente mais tarde.");
 	}
 }

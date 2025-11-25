@@ -87,6 +87,10 @@ public class ConfigManager {
 	public String getMapLink() {
 		return plugin.getConfig().getString("map.url");
 	}
+	
+	public String getServerTitle() {
+		return plugin.getConfig().getString("server.title");
+	}
 
 	public Boolean isMapEnabled() {
 		return plugin.getConfig().getBoolean("map.enabled");

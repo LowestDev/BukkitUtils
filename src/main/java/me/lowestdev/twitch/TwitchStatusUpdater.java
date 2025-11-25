@@ -27,6 +27,11 @@ public class TwitchStatusUpdater {
 
     private String currentDisplayedChannel = null;
 
+    private final HttpClient httpClient = HttpClient.newBuilder()
+            .version(HttpClient.Version.HTTP_2)
+            .followRedirects(HttpClient.Redirect.NORMAL)
+            .build();
+
     public TwitchStatusUpdater(JDA jda, String clientId, String clientSecret, List<String> twitchChannels) {
         this.jda = jda;
         this.clientId = clientId;
@@ -70,8 +75,8 @@ public class TwitchStatusUpdater {
                     currentDisplayedChannel = firstLiveChannel;
                     jda.getPresence().setStatus(OnlineStatus.DO_NOT_DISTURB);
                     jda.getPresence().setActivity(Activity.streaming(
-                        firstLiveChannel + " está ao vivo!",
-                        "https://twitch.tv/" + firstLiveChannel));
+                            firstLiveChannel + " está ao vivo!",
+                            "https://twitch.tv/" + firstLiveChannel));
                     System.out.println("[TwitchStatusUpdater] Atualizando status para " + firstLiveChannel + " (ao vivo).");
                 } else if (!anyLive && currentDisplayedChannel != null) {
                     currentDisplayedChannel = null;
@@ -96,17 +101,15 @@ public class TwitchStatusUpdater {
             return cachedAccessToken;
         }
 
-        HttpClient client = HttpClient.newHttpClient();
-
         HttpRequest request = HttpRequest.newBuilder()
-            .uri(URI.create("https://id.twitch.tv/oauth2/token"
-                + "?client_id=" + clientId
-                + "&client_secret=" + clientSecret
-                + "&grant_type=client_credentials"))
-            .POST(HttpRequest.BodyPublishers.noBody())
-            .build();
+                .uri(URI.create("https://id.twitch.tv/oauth2/token"
+                        + "?client_id=" + clientId
+                        + "&client_secret=" + clientSecret
+                        + "&grant_type=client_credentials"))
+                .POST(HttpRequest.BodyPublishers.noBody())
+                .build();
 
-        HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+        HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
         JSONObject json = new JSONObject(response.body());
 
         if (!json.has("access_token")) {
@@ -121,15 +124,13 @@ public class TwitchStatusUpdater {
     }
 
     private boolean checkIfLive(String twitchUsername, String accessToken) throws IOException, InterruptedException {
-        HttpClient client = HttpClient.newHttpClient();
-
         HttpRequest request = HttpRequest.newBuilder()
-            .uri(URI.create("https://api.twitch.tv/helix/streams?user_login=" + twitchUsername))
-            .header("Client-ID", clientId)
-            .header("Authorization", "Bearer " + accessToken)
-            .build();
+                .uri(URI.create("https://api.twitch.tv/helix/streams?user_login=" + twitchUsername))
+                .header("Client-ID", clientId)
+                .header("Authorization", "Bearer " + accessToken)
+                .build();
 
-        HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+        HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
 
         JSONObject json = new JSONObject(response.body());
         if (!json.has("data")) return false;

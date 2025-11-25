@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.lang.reflect.Field;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -20,6 +21,7 @@ import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.SimplePluginManager;
 import org.bukkit.plugin.java.JavaPlugin;
 
+import me.lowestdev.cmd.InfoCommand;
 import me.lowestdev.discord.DiscordMaintenanceCommand;
 import me.lowestdev.discord.DiscordRestartCommand;
 import me.lowestdev.discord.DiscordWhitelistCommand;
@@ -86,7 +88,7 @@ public class BukkitUtils extends JavaPlugin {
 			e.printStackTrace();
 		}
 
-		// Setting up Discord
+		
 		boolean discordEnabled = getConfigManager().getDiscord().getBoolean("discord.enabled", false);
 		String token = getConfigManager().getDiscord().getString("discord.token");
 		getConfigManager().getDiscord().getString("discord.channel-id");
@@ -114,6 +116,9 @@ public class BukkitUtils extends JavaPlugin {
 		addSaddleRecipe();
 		addNametagRecipe();
 		addGoldenAppleRecipe();
+		
+		// Initialize InfoCommand uptime counter
+		InfoCommand.initialize(this, Instant.now());
 
 		// Registering listeners
 		getLogger().info(PL_PREFIX + "Registrando os eventos dos jogadores...");
@@ -421,13 +426,10 @@ public class BukkitUtils extends JavaPlugin {
 
 		if (updateJar.exists()) {
 			try {
-				// Copy updateJar to temp location
 				Files.copy(updateJar.toPath(), tempJar.toPath(), StandardCopyOption.REPLACE_EXISTING);
 
 				getLogger().info(PL_PREFIX + ChatColor.DARK_PURPLE
 						+ "Atualização agendada, reinicie o servidor para concluí-la.");
-				// Optionally, trigger a server restart here if you want:
-				// Bukkit.getServer().shutdown();
 
 			} catch (IOException e) {
 				getLogger().severe(PL_PREFIX + ChatColor.RED + "Falha na atualização do plugin: " + ChatColor.WHITE

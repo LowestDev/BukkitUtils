@@ -8,7 +8,6 @@ public class MotdUtils {
     private static final Map<Character, Integer> CHAR_WIDTHS = new HashMap<>();
 
     static {
-        // basic widths, you can extend this with more characters if needed
         CHAR_WIDTHS.put(' ', 4);
         CHAR_WIDTHS.put('i', 2);
         CHAR_WIDTHS.put('l', 3);
@@ -22,7 +21,6 @@ public class MotdUtils {
         CHAR_WIDTHS.put('z', 5);
         CHAR_WIDTHS.put('I', 4);
         CHAR_WIDTHS.put('J', 5);
-        // default fallback
     }
 
     public static String centerMotd(String text) {

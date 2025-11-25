@@ -104,11 +104,13 @@ public class DiscordManager {
 		}
 
 		if (BukkitUtils.getInstance().getConfig().getBoolean("maintenance") && online) {
+			
 			eb.setColor(Color.YELLOW);
 			eb.setTitle("Status do servidor:");
 			eb.setDescription("Servidor em manutenção! ⚠️");
 			eb.setTimestamp(Instant.now());
 			return eb.build();
+		
 		} else {
 
 			eb.setColor(online ? Color.GREEN : Color.RED);
