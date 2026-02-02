@@ -3,17 +3,23 @@ package me.lowestdev.listener;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.LinkedList;
+import java.util.List;
+import java.util.Locale;
 import java.util.Queue;
 import java.util.Set;
+import java.util.UUID;
 
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.block.Block;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
+import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.inventory.InventoryCloseEvent;
+import org.bukkit.event.player.AsyncPlayerPreLoginEvent;
+import org.bukkit.event.player.PlayerCommandPreprocessEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.event.server.ServerListPingEvent;
@@ -21,12 +27,56 @@ import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 
 import me.lowestdev.BukkitUtils;
+import me.lowestdev.player.AccountType;
+import me.lowestdev.player.PremiumChecker;
+import me.lowestdev.player.PremiumChecker.AccountEntry;
+import me.lowestdev.player.PlayerUtils;
 import net.md_5.bungee.api.chat.ClickEvent;
 import net.md_5.bungee.api.chat.TextComponent;
 
 public class PlayerListener implements Listener {
 
 	public static ArrayList<Player> quebraTudo = new ArrayList<Player>();
+	private static final String SLOT_BYPASS_PERMISSION = "utils.joinfull";
+	private static final List<UUID> fakeSlotPlayers = new ArrayList<>();
+	private static final int MAX_FAKE_SLOTS = 5;
+	private final PremiumChecker playerManager;
+
+	public PlayerListener(PremiumChecker playerManager) {
+		this.playerManager = playerManager;
+	}
+
+	@EventHandler
+	public void onPreLogin(AsyncPlayerPreLoginEvent event) {
+		String name = event.getName().toLowerCase(Locale.ROOT);
+
+		PremiumChecker.Result result = PlayerUtils.check(name);
+		AccountEntry stored = playerManager.getAccount(name);
+
+		if (result == PremiumChecker.Result.UNKNOWN) {
+			if (stored == null) {
+				event.disallow(AsyncPlayerPreLoginEvent.Result.KICK_OTHER,
+						"§cNão foi possível verificar sua conta agora. Tente novamente mais tarde.");
+				return;
+			}
+			return;
+		}
+
+		AccountType detected = (result == PremiumChecker.Result.PREMIUM) ? AccountType.PREMIUM : AccountType.CRACKED;
+
+		UUID expectedUUID = detected == AccountType.PREMIUM ? PlayerUtils.fetchOnlineUUID(name)
+				: UUID.nameUUIDFromBytes(("OfflinePlayer:" + name).getBytes());
+
+		if (stored != null) {
+			if (stored.type() != detected || !stored.uuid().equals(expectedUUID)) {
+				event.disallow(AsyncPlayerPreLoginEvent.Result.KICK_OTHER, "§cSessão inválida para este usuário.");
+			}
+			return;
+		}
+
+		// First join (only when Mojang is reachable)
+		playerManager.registerAccount(name, detected, expectedUUID);
+	}
 
 	@EventHandler
 	public void onServerPing(ServerListPingEvent event) {
@@ -39,6 +89,13 @@ public class PlayerListener implements Listener {
 				fakeNames[i] = "Player" + (i + 1);
 			}
 		}
+
+		int realMax = Bukkit.getMaxPlayers();
+		int fakeInUse = fakeSlotPlayers.size();
+
+		int fakeAvailable = Math.max(0, MAX_FAKE_SLOTS - fakeInUse);
+
+		event.setMaxPlayers(realMax + fakeAvailable);
 	}
 
 	@EventHandler
@@ -76,6 +133,12 @@ public class PlayerListener implements Listener {
 	@EventHandler
 	public void onPlayerQuit(PlayerQuitEvent event) {
 		event.setQuitMessage("§8[§c-§8]§f " + event.getPlayer().getName());
+
+		Player player = event.getPlayer();
+
+		if (fakeSlotPlayers.contains(player.getUniqueId())) {
+			fakeSlotPlayers.remove(player.getUniqueId());
+		}
 
 		if (BukkitUtils.discordManager != null) {
 			Bukkit.getScheduler().runTaskLaterAsynchronously(BukkitUtils.pl,
@@ -176,7 +239,40 @@ public class PlayerListener implements Listener {
 		if (event.getPlayer().hasPermission("utils.maintenance") || event.getPlayer().isOp()) {
 			return;
 		}
+
+		Player player = event.getPlayer();
+
 		event.disallow(org.bukkit.event.player.PlayerLoginEvent.Result.KICK_OTHER,
 				"§cO servidor está em modo de manutenção!\n§eTente novamente mais tarde.");
+
+		if (event.getResult() == org.bukkit.event.player.PlayerLoginEvent.Result.KICK_FULL) {
+
+			if ((player.hasPermission(SLOT_BYPASS_PERMISSION) || player.isOp())
+					&& fakeSlotPlayers.size() < MAX_FAKE_SLOTS) {
+
+				fakeSlotPlayers.add(player.getUniqueId());
+				event.allow();
+			}
+		}
+
+	}
+
+	@EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
+	public void onCommand(PlayerCommandPreprocessEvent event) {
+		Player player = event.getPlayer();
+
+		if (player.isOp() || player.hasPermission("utils.plugins")) {
+			return;
+		}
+
+		String message = event.getMessage().toLowerCase(Locale.ROOT);
+
+		if (message.startsWith("/plugins") || message.startsWith("/pl") || message.startsWith("/bukkit:")
+				|| message.startsWith("/version") || message.startsWith("/ver") || message.startsWith("/about")
+				|| message.startsWith("/plugin")) {
+
+			event.setCancelled(true);
+			player.sendMessage(ChatColor.RED + "Você não tem permissão para isso.");
+		}
 	}
 }

@@ -24,6 +24,7 @@ import org.bukkit.plugin.java.JavaPlugin;
 import me.lowestdev.cmd.InfoCommand;
 import me.lowestdev.discord.DiscordMaintenanceCommand;
 import me.lowestdev.discord.DiscordRestartCommand;
+import me.lowestdev.discord.DiscordStopCommand;
 import me.lowestdev.discord.DiscordWhitelistCommand;
 import me.lowestdev.listener.CorreioListener;
 import me.lowestdev.listener.PlayerListener;
@@ -31,6 +32,7 @@ import me.lowestdev.manager.ConfigManager;
 import me.lowestdev.manager.DeliveryManager;
 import me.lowestdev.manager.DiscordManager;
 import me.lowestdev.models.ClassGetter;
+import me.lowestdev.player.PremiumChecker;
 import me.lowestdev.twitch.TwitchStatusUpdater;
 import me.lowestdev.utils.MotdUtils;
 import net.dv8tion.jda.api.JDA;
@@ -46,8 +48,11 @@ public class BukkitUtils extends JavaPlugin {
 	private static ConfigManager configManager;
 	public static DeliveryManager deliveryManager;
 	public static CorreioListener correioListener;
+	private static int originalMaxPlayers;
+	private static int extraSlots = 0;
 
 	public static final String PL_PREFIX = ChatColor.BOLD.toString() + ChatColor.GREEN.toString();
+	public static PremiumChecker playerManager;
 
 	public static Plugin pl;
 
@@ -88,7 +93,6 @@ public class BukkitUtils extends JavaPlugin {
 			e.printStackTrace();
 		}
 
-		
 		boolean discordEnabled = getConfigManager().getDiscord().getBoolean("discord.enabled", false);
 		String token = getConfigManager().getDiscord().getString("discord.token");
 		getConfigManager().getDiscord().getString("discord.channel-id");
@@ -116,13 +120,14 @@ public class BukkitUtils extends JavaPlugin {
 		addSaddleRecipe();
 		addNametagRecipe();
 		addGoldenAppleRecipe();
-		
+
 		// Initialize InfoCommand uptime counter
 		InfoCommand.initialize(this, Instant.now());
 
+		playerManager = new PremiumChecker();
 		// Registering listeners
 		getLogger().info(PL_PREFIX + "Registrando os eventos dos jogadores...");
-		getServer().getPluginManager().registerEvents(new PlayerListener(), this);
+		getServer().getPluginManager().registerEvents(new PlayerListener(playerManager), this);
 		getServer().getPluginManager().registerEvents(new CorreioListener(), this);
 		getLogger().info(PL_PREFIX + "Eventos registrados com sucesso!");
 
@@ -132,7 +137,8 @@ public class BukkitUtils extends JavaPlugin {
 		getLogger().info(PL_PREFIX + "Comandos registrados com sucesso!");
 
 		// Checking for Twitch integration
-		if (getConfigManager().getDiscord().getBoolean("discord.enabled") && getConfigManager().getTwitchConfiguration().getBoolean("twitch.enabled")) {
+		if (getConfigManager().getDiscord().getBoolean("discord.enabled")
+				&& getConfigManager().getTwitchConfiguration().getBoolean("twitch.enabled")) {
 			FileConfiguration twitchConfig = getConfigManager().getTwitchConfiguration();
 			String clientId = twitchConfig.getString("twitch.client_id");
 			String clientSecret = twitchConfig.getString("twitch.client_secret");
@@ -144,14 +150,21 @@ public class BukkitUtils extends JavaPlugin {
 		} else {
 			Bukkit.getLogger().info(ChatColor.BOLD + "§cIntegração com a §5Twitch §cnão foi iniciada");
 		}
-		if (getConfig().getString("motd.common").length() > 0 || getConfig().getString("motd.maintenance").length() > 0) {
+		if (getConfig().getString("motd.common").length() > 0
+				|| getConfig().getString("motd.maintenance").length() > 0) {
 			if (!getConfig().getBoolean("maintenance")) {
-			Bukkit.getServer().setMotd(MotdUtils.centerMotd(getConfig().getString("motd.common").replace("&", "§")));
-		} else Bukkit.getServer().setMotd(MotdUtils.centerMotd(getConfig().getString("motd.maintenance").replace("&", "§")));
-	} else {
-		Bukkit.getServer().setMotd(Bukkit.getServer().getMotd());
+				Bukkit.getServer()
+						.setMotd(MotdUtils.centerMotd(getConfig().getString("motd.common").replace("&", "§")));
+			} else
+				Bukkit.getServer()
+						.setMotd(MotdUtils.centerMotd(getConfig().getString("motd.maintenance").replace("&", "§")));
+		} else {
+			Bukkit.getServer().setMotd(Bukkit.getServer().getMotd());
+		}
+		originalMaxPlayers = Bukkit.getMaxPlayers();
+		getLogger().info(PL_PREFIX + "Slots originais detectados: " + originalMaxPlayers);
+
 	}
-}
 
 	@Override
 	public void onDisable() {
@@ -165,10 +178,14 @@ public class BukkitUtils extends JavaPlugin {
 		if (deliveryManager != null) {
 			deliveryManager.close();
 		}
+		if (playerManager != null) {
+			playerManager.close();
+		}
 		getLogger().info(PL_PREFIX + "Buscando atualizações pendentes...");
 		scheduleUpdate();
 
 		getLogger().info(PL_PREFIX + ChatColor.YELLOW + "O plugin foi desabilitado com sucesso!");
+
 	}
 
 	private void setupDiscordCmd() {
@@ -186,13 +203,15 @@ public class BukkitUtils extends JavaPlugin {
 					.addCommands(Commands.slash("whitelist", "Gerencia a whitelist")
 							.addOption(OptionType.STRING, "ação", "add, remove ou list", true)
 							.addOption(OptionType.STRING, "nick", "Nick do jogador (não necessário para list)", false),
-							Commands.slash("restart", "Reinicia o servidor Minecraft"),
+							Commands.slash("stop", "Desliga o servidor de Minecraft"),
+							Commands.slash("restart", "Reinicia o servidor de Minecraft"),
 							Commands.slash("maintenance", "Ativa o modo de manutenção do servidor"))
 					.queue();
 
-			jda.addEventListener(new DiscordRestartCommand());
+			jda.addEventListener(new DiscordStopCommand());
 			jda.addEventListener(new DiscordWhitelistCommand());
 			jda.addEventListener(new DiscordMaintenanceCommand());
+			jda.addEventListener(new DiscordRestartCommand());
 		}
 	}
 

@@ -24,7 +24,7 @@ public class ReloadCommand extends Command {
 			sender.sendMessage("Comando desconhecido, digite /help caso esteja em dúvida");
 			return false;
 		}
-		BukkitUtils.getInstance().reloadPlugin();
+		BukkitUtils.getInstance().reloadConfig();
 		sender.sendMessage("Sistema recarregado com sucesso!");
 		return true;
 	}

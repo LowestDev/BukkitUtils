@@ -8,11 +8,11 @@ import me.lowestdev.BukkitUtils;
 import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
 
-public class DiscordStopCommand extends ListenerAdapter {
+public class DiscordRestartCommand extends ListenerAdapter {
 
 	@Override
 	public void onSlashCommandInteraction(SlashCommandInteractionEvent event) {
-		if (!event.getName().equals("stop"))
+		if (!event.getName().equals("restart"))
 			return;
 
 		String userId = event.getUser().getId();
@@ -22,14 +22,14 @@ public class DiscordStopCommand extends ListenerAdapter {
 			return;
 		}
 
-		event.reply("🌀 Fechando o servidor...").setEphemeral(true).queue();
+		event.reply("🌀 Reiniciando o servidor...").setEphemeral(true).queue();
 
 		if (event.getHook() != null) {
 			event.getHook().deleteOriginal().queue();
 		}
 
 		Bukkit.getScheduler().runTask(Bukkit.getPluginManager().getPlugin("BukkitUtils"), () -> {
-			Bukkit.shutdown();
+			System.exit(1);
 		});
 	}
 }
